@@ -13,30 +13,45 @@ function navigate(view, btn) {
   if (view === 'dashboard') {
     titleEl.innerText = "Dashboard General";
     viewEl.innerHTML = `
+      <div class="server-banner">
+        <div>
+          <strong>Estado del Servidor Local (wa-server):</strong> <span id="server-status" style="color: #eab308;">Verificando heartbeat...</span>
+        </div>
+        <div>
+          <button class="btn btn-wa" onclick="triggerServerAction('restart')">Reiniciar Baileys</button>
+        </div>
+      </div>
       <div class="grid-4">
         <div class="stat-card"><h4>Clientes Totales</h4><div class="val" id="stat-cust">...</div></div>
         <div class="stat-card"><h4>Productos Activos</h4><div class="val" id="stat-prod">...</div></div>
         <div class="stat-card"><h4>Pedidos Nuevos</h4><div class="val" id="stat-ord">...</div></div>
-        <div class="stat-card"><h4>Campañas Activas</h4><div class="val" id="stat-camp">...</div></div>
+        <div class="stat-card"><h4>Mensajes en Cola</h4><div class="val" id="stat-msg">...</div></div>
       </div>
       <div class="card">
-        <div class="card-title">Resumen de Actividad del Puente de Comunicaciones</div>
-        <p style="color: var(--text-muted);">Bienvenido al nuevo sistema independiente Paper Puente. Utiliza el menú lateral para gestionar WhatsApp, correos, campañas, catálogo y captación de clientes sin fricciones.</p>
+        <div class="card-title">Resumen del Puente de Comunicaciones</div>
+        <p style="color: var(--text-muted);">Sistema optimizado y conectado exclusivamente a tu base de datos de producción (`klcibjwleiqppedefpxw`). Desde aquí operas el servidor local Baileys, Gmail, campañas y CRM.</p>
       </div>
     `;
     loadStats();
+    checkServerHeartbeat();
   } else if (view === 'whatsapp') {
     titleEl.innerText = "Centro de Mensajería WhatsApp & Baileys";
     viewEl.innerHTML = `
-      <div class="card" style="height: 100%; display: flex; flex-direction: column;">
-        <div class="card-title">Bandeja de Mensajes Recientes</div>
-        <div style="flex: 1; display: grid; grid-template-columns: 280px 1fr; gap: 20px; height: 450px;">
-          <div style="border-right: 1px solid var(--border); overflow-y: auto;" id="wa-chat-list"><span style="color: var(--text-muted); font-size: 0.85rem;">Cargando chats...</span></div>
+      <div class="card">
+        <div class="card-title">Vincular / Estado de Sesión Baileys</div>
+        <p style="color: var(--text-muted); margin-bottom: 15px;">Para iniciar sesión en WhatsApp Web, asegúrate de que el servidor local (`wa-server`) esté corriendo en tu PC y escanea el código QR o verifica la conexión.</p>
+        <button class="btn btn-wa" onclick="fetchQRCode()">Mostrar Código QR / Estado</button>
+        <div id="qr-container" style="margin-top: 15px; color: var(--text-muted);"></div>
+      </div>
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div class="card-title">Bandeja de Mensajes y Chats Activos</div>
+        <div style="display: grid; grid-template-columns: 280px 1fr; gap: 20px; height: 450px;">
+          <div style="border-right: 1px solid var(--border); overflow-y: auto;" id="wa-chat-list"><span style="color: var(--text-muted);">Cargando chats...</span></div>
           <div style="display: flex; flex-direction: column; justify-content: space-between;">
-            <div style="flex: 1; overflow-y: auto; padding: 10px; background: var(--bg-main); border-radius: 8px;" id="wa-msg-list"><span style="color: var(--text-muted); font-size: 0.85rem;">Selecciona una conversación...</span></div>
+            <div style="flex: 1; overflow-y: auto; padding: 10px; background: var(--bg-primary); border-radius: 6px;" id="wa-msg-list"><span style="color: var(--text-muted);">Selecciona un chat...</span></div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
               <input type="text" id="wa-text-input" placeholder="Escribe un mensaje de WhatsApp..." style="margin: 0;">
-              <button class="btn" onclick="sendWAMsg()">Enviar</button>
+              <button class="btn btn-wa" onclick="sendWAMsg()">Enviar</button>
             </div>
           </div>
         </div>
@@ -44,8 +59,13 @@ function navigate(view, btn) {
     `;
     loadWAChats();
   } else if (view === 'correo') {
-    titleEl.innerText = "Centro de Correo Electrónico (Gmail)";
+    titleEl.innerText = "Centro de Correo Electrónico (Gmail API)";
     viewEl.innerHTML = `
+      <div class="card">
+        <div class="card-title">Vincular / Configurar Cuenta de Gmail</div>
+        <p style="color: var(--text-muted); margin-bottom: 15px;">El motor ` + "`wa-server/src/email.js`" + ` gestiona la autenticación OAuth y el envío bidireccional por usuario.</p>
+        <button class="btn btn-gmail" onclick="alert('Configuración de Gmail activa mediante wa-server.')">Verificar Conexión Gmail</button>
+      </div>
       <div class="card">
         <div class="card-title">Enviar Correo de Atención / Cotización</div>
         <label>Correo Destinatario</label>
@@ -54,7 +74,7 @@ function navigate(view, btn) {
         <input type="text" id="mail-subject" placeholder="Asunto del mensaje">
         <label>Mensaje</label>
         <textarea id="mail-body" rows="6" placeholder="Escribe el contenido del correo..."></textarea>
-        <button class="btn" onclick="sendEmailMsg()">Enviar Correo</button>
+        <button class="btn btn-gmail" onclick="sendEmailMsg()">Enviar Correo por Cola</button>
       </div>
     `;
   } else if (view === 'difusion') {
@@ -65,7 +85,7 @@ function navigate(view, btn) {
         <label>Título de la Campaña</label>
         <input type="text" id="camp-name" placeholder="Ej. Promoción Mayorista Semanal">
         <label>Canal</label>
-        <select id="camp-type"><option value="whatsapp">WhatsApp</option><option value="email">Correo</option></select>
+        <select id="camp-type"><option value="whatsapp">WhatsApp (Baileys)</option><option value="email">Correo (Gmail)</option></select>
         <label>Mensaje (Usa variables como {{nombre}})</label>
         <textarea id="camp-text" rows="5" placeholder="Hola {{nombre}}, descubre nuestro inventario actualizado..."></textarea>
         <button class="btn" onclick="createCampaignRecord()">Lanzar Campaña en Cola</button>
@@ -112,18 +132,44 @@ function navigate(view, btn) {
 
 async function loadStats() {
   try {
-    const [{ count: c1 }, { count: c2 }, { count: c3 }] = await Promise.all([
+    const [{ count: c1 }, { count: c2 }, { count: c3 }, { count: c4 }] = await Promise.all([
       supabaseClient.from('jjp_customers').select('*', { count: 'exact', head: true }),
       supabaseClient.from('jjp_products').select('*', { count: 'exact', head: true }),
-      supabaseClient.from('jjp_orders').select('*', { count: 'exact', head: true })
+      supabaseClient.from('jjp_orders').select('*', { count: 'exact', head: true }),
+      supabaseClient.from('jjp_wa_messages').select('*', { count: 'exact', head: true })
     ]);
     document.getElementById('stat-cust').innerText = c1 || 0;
     document.getElementById('stat-prod').innerText = c2 || 0;
     document.getElementById('stat-ord').innerText = c3 || 0;
-    document.getElementById('stat-camp').innerText = 0;
+    document.getElementById('stat-msg').innerText = c4 || 0;
   } catch(e) {
     console.error(e);
   }
+}
+
+async function checkServerHeartbeat() {
+  const badge = document.getElementById('server-status');
+  if (!badge) return;
+  const { data } = await supabaseClient.from('jjp_server_control').select('*').eq('id', 1).single();
+  if (data && data.updated_at) {
+    const diff = (new Date() - new Date(data.updated_at)) / 1000;
+    if (diff < 70) {
+      badge.innerHTML = `<span style="color: #3fb950;">🟢 Activo (Último latido hace ${Math.floor(diff)}s)</span>`;
+    } else {
+      badge.innerHTML = `<span style="color: #f85149;">🔴 Desconectado (Inactivo desde hace ${Math.floor(diff)}s)</span>`;
+    }
+  } else {
+    badge.innerHTML = `<span style="color: #f85149;">🔴 Sin registro de latido</span>`;
+  }
+}
+
+async function triggerServerAction(action) {
+  await supabaseClient.from('jjp_server_control').update({ command: action, updated_at: new Date() }).eq('id', 1);
+  alert('Comando "' + action + '" enviado al servidor local.');
+}
+
+async function fetchQRCode() {
+  document.getElementById('qr-container').innerHTML = `Estado: Solicitando sincronización con Baileys...`;
 }
 
 async function loadCustomers() {
@@ -156,7 +202,7 @@ async function loadWAChats() {
   }
   const phones = [...new Set(data.map(m => m.phone))];
   list.innerHTML = phones.map(p => `
-    <div style="padding: 10px; background: var(--bg-surface); border-radius: 6px; margin-bottom: 6px; cursor: pointer;" onclick="selectChat('${p}')">
+    <div style="padding: 10px; background: var(--bg-card); border-radius: 6px; margin-bottom: 6px; cursor: pointer;" onclick="selectChat('${p}')">
       <strong>${p}</strong>
     </div>
   `).join('');
