@@ -3,224 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paper Puente — Hub Operativo de Comunicaciones</title>
-  <link rel="stylesheet" href="assets/css/variables.css">
-  <link rel="stylesheet" href="assets/css/admin.css">
-  <script src="assets/vendor/supabase-2.58.0.js"></script>
-  <script src="assets/js/config.js"></script>
-  <script src="assets/js/toast.js"></script>
+  <title>Paper Puente — Hub Operativo y CRM</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { background: #07090e; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
-    .sidebar { width: 300px; background: #0d121f; border-right: 1px solid #1f2937; display: flex; flex-direction: column; padding: 20px; gap: 10px; }
-    .sidebar h2 { font-size: 1.2rem; color: #fff; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-    .nav-btn { background: #161e2e; border: 1px solid #2d3748; color: #cbd5e1; padding: 12px 16px; border-radius: 8px; text-align: left; cursor: pointer; font-weight: 500; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
-    .nav-btn:hover, .nav-btn.active { background: #2563eb; color: #fff; border-color: #3b82f6; }
-    .main-area { flex: 1; display: flex; flex-direction: column; background: #0b0f19; overflow-y: auto; }
-    .topbar { background: #0d121f; border-bottom: 1px solid #1f2937; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
-    .content-card { margin: 30px; background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    .badge-live { background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
-    input, textarea, select { background: #07090e; border: 1px solid #374151; color: #fff; padding: 10px 14px; border-radius: 8px; width: 100%; margin-top: 6px; margin-bottom: 14px; outline: none; }
-    input:focus, textarea:focus { border-color: #3b82f6; }
-    .btn { background: #2563eb; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-    .btn:hover { background: #1d4ed8; }
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    th, td { padding: 12px 15px; border-bottom: 1px solid #1f2937; text-align: left; font-size: 0.9rem; }
-    th { color: #9ca3af; font-weight: 600; background: #161e2e; }
+    :root {
+      --bg-main: #07090e;
+      --bg-surface: #0d121f;
+      --bg-card: #131b2e;
+      --border: #1f2937;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --success: #10b981;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+    /* Sidebar */
+    .sidebar { width: 280px; background: var(--bg-surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; gap: 8px; }
+    .brand { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .brand span { background: var(--accent); color: #fff; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px; }
+    .nav-btn { background: transparent; border: 1px solid transparent; color: var(--text-muted); padding: 12px 16px; border-radius: 8px; text-align: left; cursor: pointer; font-weight: 500; transition: 0.2s; display: flex; align-items: center; gap: 12px; }
+    .nav-btn:hover, .nav-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* Main Area */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 16px 30px; display: flex; justify-content: space-between; align-items: center; }
+    .topbar h2 { font-size: 1.1rem; font-weight: 600; }
+    .db-badge { background: rgba(16, 185, 129, 0.15); color: var(--success); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+
+    .content { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+    .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; color: #fff; }
+
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .stat-card { background: var(--bg-surface); border: 1px solid var(--border); padding: 20px; border-radius: 10px; }
+    .stat-card h4 { color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
+    .stat-card .val { font-size: 1.8rem; font-weight: 700; color: #fff; margin-top: 8px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 12px 16px; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.9rem; }
+    th { color: var(--text-muted); font-weight: 600; background: var(--bg-surface); }
+    
+    input, textarea, select { background: var(--bg-main); border: 1px solid var(--border); color: #fff; padding: 10px 14px; border-radius: 8px; width: 100%; margin-top: 6px; margin-bottom: 14px; outline: none; }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    .btn { background: var(--accent); color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    .btn:hover { background: var(--accent-hover); }
   </style>
 </head>
 <body>
 
   <div class="sidebar">
-    <h2>🌉 Paper Puente</h2>
-    <button class="nav-btn active" onclick="switchView('whatsapp', this)">💬 WhatsApp & Baileys</button>
-    <button class="nav-btn" onclick="switchView('correo', this)">📧 Correo (Gmail)</button>
-    <button class="nav-btn" onclick="switchView('difusion', this)">📢 Campañas de Difusión</button>
-    <button class="nav-btn" onclick="switchView('clientes', this)">👥 CRM Clientes & Zonas</button>
-    <button class="nav-btn" onclick="switchView('catalogo', this)">📦 Catálogo Interno</button>
-    <button class="nav-btn" onclick="switchView('pedidos', this)">🛒 Pedidos y Captación</button>
+    <div class="brand">Paper Puente <span>v2.0</span></div>
+    <button class="nav-btn active" onclick="navigate('dashboard', this)">📊 Dashboard General</button>
+    <button class="nav-btn" onclick="navigate('whatsapp', this)">💬 WhatsApp & Baileys</button>
+    <button class="nav-btn" onclick="navigate('correo', this)">📧 Correo (Gmail)</button>
+    <button class="nav-btn" onclick="navigate('difusion', this)">📢 Campañas Masivas</button>
+    <button class="nav-btn" onclick="navigate('clientes', this)">👥 Clientes y Zonas</button>
+    <button class="nav-btn" onclick="navigate('catalogo', this)">📦 Catálogo e Inventario</button>
+    <button class="nav-btn" onclick="navigate('pedidos', this)">🛒 Pedidos y Captación</button>
   </div>
 
-  <div class="main-area">
+  <div class="main">
     <div class="topbar">
-      <h3 id="view-title" style="font-size: 1.1rem; font-weight: 600;">Centro de Mensajería WhatsApp</h3>
-      <span class="badge-live">Base de Datos: klcibjwleiqppedefpxw</span>
+      <h2 id="page-title">Dashboard General</h2>
+      <div class="db-badge">Base de Datos: klcibjwleiqppedefpxw</div>
     </div>
-
-    <div id="app-container" style="padding: 10px;">
-      <!-- Se inyecta la vista activa dinámicamente -->
+    <div class="content" id="app-view">
+      <!-- Contenido dinámico -->
     </div>
   </div>
 
-  <script>
-    function switchView(viewName, btn) {
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-
-      const titleEl = document.getElementById('view-title');
-      const container = document.getElementById('app-container');
-
-      if (viewName === 'whatsapp') {
-        titleEl.innerText = "Centro de Mensajería WhatsApp & Baileys";
-        container.innerHTML = `
-          <div class="content-card">
-            <h3>Bandeja de Entrada de WhatsApp</h3>
-            <p style="color: #9ca3af; font-size: 0.9rem; margin-bottom: 20px;">Conectado al motor local wa-server y Supabase para captación y atención directa.</p>
-            <div style="display: grid; grid-template-columns: 280px 1fr; gap: 20px; height: 500px; background: #07090e; border: 1px solid #1f2937; border-radius: 8px; overflow: hidden;">
-              <div style="border-right: 1px solid #1f2937; padding: 15px; overflow-y: auto;" id="wa-chats">
-                <span style="color: #9ca3af; font-size: 0.85rem;">Cargando chats activos...</span>
-              </div>
-              <div style="display: flex; flex-direction: column; justify-content: space-between; padding: 15px;">
-                <div style="flex: 1; overflow-y: auto;" id="wa-messages">
-                  <span style="color: #9ca3af; font-size: 0.85rem;">Selecciona una conversación para interactuar.</span>
-                </div>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                  <input type="text" id="wa-input" placeholder="Escribe tu mensaje por WhatsApp..." style="margin: 0;">
-                  <button class="btn" onclick="sendWAMessage()">Enviar</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        loadWAChats();
-      } else if (viewName === 'correo') {
-        titleEl.innerText = "Centro de Correos (Gmail API)";
-        container.innerHTML = `
-          <div class="content-card">
-            <h3>Bandeja de Correo Electrónico</h3>
-            <p style="color: #9ca3af; font-size: 0.9rem; margin-bottom: 20px;">Gestión de correos entrantes y salientes para cotizaciones y atención.</p>
-            <div style="background: #07090e; padding: 20px; border: 1px solid #1f2937; border-radius: 8px;">
-              <label>Destinatario</label>
-              <input type="email" id="email-to" placeholder="cliente@correo.com">
-              <label>Asunto</label>
-              <input type="text" id="email-subject" placeholder="Cotización de Papelería">
-              <label>Mensaje</label>
-              <textarea id="email-body" rows="5" placeholder="Escribe el mensaje de correo..."></textarea>
-              <button class="btn" onclick="sendEmail()">Enviar Correo</button>
-            </div>
-          </div>
-        `;
-      } else if (viewName === 'difusion') {
-        titleEl.innerText = "Campañas de Difusión Masiva";
-        container.innerHTML = `
-          <div class="content-card">
-            <h3>Lanzar Nueva Campaña (WhatsApp / Correo)</h3>
-            <p style="color: #9ca3af; font-size: 0.9rem; margin-bottom: 20px;">Envío automatizado con control anti-baneo (throttle de 15s).</p>
-            <label>Título de la Campaña</label>
-            <input type="text" id="camp-title" placeholder="Ej. Promoción Mayorista Agosto">
-            <label>Canal</label>
-            <select id="camp-channel"><option value="whatsapp">WhatsApp</option><option value="email">Correo Electrónico</option></select>
-            <label>Plantilla del Mensaje (Usa {{nombre}})</label>
-            <textarea id="camp-msg" rows="4" placeholder="Hola {{nombre}}, revisa nuestro catálogo actualizado..."></textarea>
-            <button class="btn" onclick="createCampaign()">Programar Campaña</button>
-          </div>
-        `;
-      } else if (viewName === 'clientes') {
-        titleEl.innerText = "CRM de Clientes y Zonas";
-        container.innerHTML = `
-          <div class="content-card">
-            <h3>Cartera de Clientes Registrados</h3>
-            <div style="overflow-x: auto;">
-              <table>
-                <thead><tr><th>Nombre / Empresa</th><th>RIF</th><th>Teléfono</th><th>Zona</th></tr></thead>
-                <tbody id="cust-tbody"><tr><td colspan="4">Cargando clientes...</td></tr></tbody>
-              </table>
-            </div>
-          </div>
-        `;
-        loadCustomersTable();
-      } else if (viewName === 'catalogo') {
-        titleEl.innerText = "Catálogo de Productos e Inventario";
-        container.innerHTML = `
-          <div class="content-card">
-            <h3>Inventario Activo</h3>
-            <div style="overflow-x: auto;">
-              <table>
-                <thead><tr><th>SKU</th><th>Producto</th><th>Precio (USD)</th><th>Stock</th></tr></thead>
-                <tbody id="prod-tbody"><tr><td colspan="4">Cargando catálogo...</td></tr></tbody>
-              </table>
-            </div>
-          </div>
-        `;
-        loadCatalogTable();
-      } else if (viewName === 'pedidos') {
-        titleEl.innerText = "Control de Pedidos y Captación";
-        container.innerHTML = `
-          <div class="content-card">
-            <h3>Órdenes y Solicitudes de Clientes</h3>
-            <div style="overflow-x: auto;">
-              <table>
-                <thead><tr><th>ID</th><th>Cliente</th><th>Total USD</th><th>Estado</th></tr></thead>
-                <tbody id="ord-tbody"><tr><td colspan="4">Cargando pedidos...</td></tr></tbody>
-              </table>
-            </div>
-          </div>
-        `;
-        loadOrdersTable();
-      }
-    }
-
-    async function loadWAChats() {
-      const chatDiv = document.getElementById('wa-chats');
-      try {
-        const { data, error } = await supabaseClient.from('jjp_wa_messages').select('*').order('created_at', { ascending: false }).limit(25);
-        if (error || !data || data.length === 0) {
-          chatDiv.innerHTML = `<span style="color: #9ca3af; font-size: 0.85rem;">No hay chats registrados en cola.</span>`;
-          return;
-        }
-        const phones = [...new Set(data.map(m => m.phone))];
-        chatDiv.innerHTML = phones.map(p => `
-          <div style="padding: 10px; background: #161e2e; border-radius: 6px; margin-bottom: 8px; cursor: pointer;" onclick="selectWAChat('${p}')">
-            <strong style="font-size: 0.9rem; color: #fff;">${p}</strong>
-            <div style="font-size: 0.75rem; color: #9ca3af;">Chat activo</div>
-          </div>
-        `).join('');
-      } catch(e) {
-        chatDiv.innerHTML = `<span style="color: #ef4444; font-size: 0.85rem;">Error al conectar con base de datos.</span>`;
-      }
-    }
-
-    function selectWAChat(phone) {
-      document.getElementById('wa-messages').innerHTML = `<div style="color: #38bdf8; font-size: 0.9rem;">Chat seleccionado: ${phone}</div>`;
-    }
-
-    async function sendWAMessage() {
-      const text = document.getElementById('wa-input').value;
-      if (!text) return;
-      alert('Mensaje encolado para envío por wa-server.');
-      document.getElementById('wa-input').value = '';
-    }
-
-    async function sendEmail() {
-      alert('Correo encolado para envío mediante la API de Gmail.');
-    }
-
-    async function createCampaign() {
-      alert('Campaña registrada correctamente en la base de datos.');
-    }
-
-    async function loadCustomersTable() {
-      const { data } = await supabaseClient.from('jjp_customers').select('*').limit(30);
-      const tbody = document.getElementById('cust-tbody');
-      if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="4">Sin clientes en esta base de datos.</td></tr>`; return; }
-      tbody.innerHTML = data.map(c => `<tr><td>${c.name}</td><td>${c.rif || 'N/A'}</td><td>${c.phone || 'N/A'}</td><td>${c.zone || 'General'}</td></tr>`).join('');
-    }
-
-    async function loadCatalogTable() {
-      const { data } = await supabaseClient.from('jjp_products').select('*').limit(30);
-      const tbody = document.getElementById('prod-tbody');
-      if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="4">Sin productos en inventario.</td></tr>`; return; }
-      tbody.innerHTML = data.map(p => `<tr><td>${p.sku || 'N/A'}</td><td>${p.name}</td><td>$${p.price_usd || 0}</td><td>${p.stock || 0}</td></tr>`).join('');
-    }
-
-    async function loadOrdersTable() {
-      const { data } = await supabaseClient.from('jjp_orders').select('*').limit(30);
-      const tbody = document.getElementById('ord-tbody');
-      if (!data || data.length === 0) { tbody.innerHTML = `<tr><td colspan="4">Sin pedidos recientes.</td></tr>`; return; }
-      tbody.innerHTML = data.map(o => `<tr><td>#${o.id}</td><td>${o.customer_name || 'Cliente'}</td><td>$${o.total_usd || 0}</td><td>${o.status || 'Nuevo'}</td></tr>`).join('');
-    }
-
-    // Inicializar vista por defecto
-    window.onload = () => switchView('whatsapp');
-  </script>
+  <script src="assets/js/bridge.js"></script>
 </body>
 </html>
