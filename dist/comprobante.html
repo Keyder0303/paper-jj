@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comprobante | JJ Paper</title>
+<link rel="icon" href="assets/img/logo.svg">
+<style>
+  /* Colores personalizables desde Ajustes (jjp_settings.doc_color / doc_accent) */
+  :root { --doc-c:#16604A; --doc-a:#C9A24B; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:#1a1a1a; background:#eef1f0; padding:20px; }
+  .sheet { max-width:820px; margin:0 auto; background:#fff; padding:34px 38px; border-radius:8px;
+    box-shadow:0 4px 24px rgba(0,0,0,.1); }
+  .cmp-head { display:flex; justify-content:space-between; align-items:flex-start; gap:20px;
+    border-bottom:3px solid var(--doc-c); padding-bottom:16px; margin-bottom:8px; }
+  .cmp-biz { display:flex; gap:12px; align-items:center; }
+  .cmp-biz img { width:56px; height:56px; object-fit:contain; }
+  .cmp-biz h1 { font-size:20px; color:var(--doc-c); line-height:1.1; }
+  .cmp-biz .meta { font-size:12px; color:#555; margin-top:3px; }
+  .cmp-doc { text-align:right; }
+  .cmp-doc .tag { display:inline-block; background:var(--doc-c); color:#fff; font-weight:700;
+    font-size:12px; padding:4px 10px; border-radius:5px; letter-spacing:.5px; }
+  .cmp-doc .num { font-size:20px; font-weight:800; margin-top:6px; }
+  .cmp-doc .date { font-size:12px; color:#555; }
+  .cmp-parties { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:18px 0; }
+  .cmp-parties .box { background:#f6f8f7; border-radius:8px; padding:12px 14px; }
+  .cmp-parties h3 { font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--doc-c); margin-bottom:6px; }
+  .cmp-parties p { font-size:13px; line-height:1.5; }
+
+  /* ==========================================================
+     Presentación formal (factura / orden de recibo)
+     Mantiene la marca — verde JJ, latón y logo — pero ordena
+     los datos como el cliente espera verlos en una factura:
+     razón social y RIF arriba, Nº de Control a la derecha,
+     alícuota por línea y el IVA desglosado al pie.
+     NO es un documento fiscal y el pie lo dice.
+     ========================================================== */
+  .fisc-head { display:flex; justify-content:space-between; align-items:stretch; gap:16px;
+    border-bottom:3px solid var(--doc-c); padding-bottom:14px; margin-bottom:14px; }
+  .fisc-biz { display:flex; gap:14px; align-items:flex-start; flex:1; min-width:0; }
+  .fisc-biz img { width:62px; height:62px; object-fit:contain; flex-shrink:0; }
+  .fisc-biz .razon { font-size:19px; font-weight:800; color:var(--doc-c); line-height:1.15;
+    text-transform:uppercase; letter-spacing:.3px; }
+  .fisc-biz .rif { font-size:13px; font-weight:700; color:#333; margin-top:2px; letter-spacing:.4px; }
+  .fisc-biz .dir { font-size:11.5px; color:#555; line-height:1.5; margin-top:4px; }
+  .fisc-biz .dir .et { color:#888; }
+
+  /* Recuadro del documento: lo que en una factura va preimpreso */
+  .fisc-doc { border:2px solid var(--doc-c); border-radius:8px; min-width:238px; overflow:hidden;
+    display:flex; flex-direction:column; }
+  .fisc-doc .tipo { background:var(--doc-c); color:#fff; text-align:center; font-weight:800;
+    font-size:14px; letter-spacing:2px; padding:6px 10px; }
+  .fisc-doc .fila { display:flex; justify-content:space-between; gap:10px; padding:5px 10px;
+    font-size:12px; border-bottom:1px dashed #d8e0dc; }
+  .fisc-doc .fila:last-child { border-bottom:0; }
+  .fisc-doc .fila .et { color:#666; }
+  .fisc-doc .fila .vl { font-weight:700; color:#1a1a1a; }
+  /* El Nº de Control es el dato que más identifica al documento como factura */
+  .fisc-doc .control { background:#fff8f8; border-top:1px solid #f0d5d5; }
+  .fisc-doc .control .et { color:#9a2020; font-weight:700; }
+  .fisc-doc .control .vl { color:#B00020; font-size:13.5px; letter-spacing:.6px; }
+
+  /* Datos del cliente, enmarcados */
+  .fisc-cli { border:1px solid #cfdad5; border-radius:8px; margin:14px 0 4px; overflow:hidden; }
+  .fisc-cli .cab { background:var(--doc-c); color:#fff; font-size:11px; font-weight:700;
+    letter-spacing:1.4px; padding:5px 12px; text-transform:uppercase; }
+  .fisc-cli .cuerpo { display:grid; grid-template-columns:1fr 1fr; gap:2px 18px; padding:10px 12px; }
+  .fisc-cli .campo { font-size:12.5px; line-height:1.6; display:flex; gap:6px; min-width:0; }
+  .fisc-cli .campo .et { color:#777; flex-shrink:0; }
+  .fisc-cli .campo .vl { font-weight:600; color:#1a1a1a; overflow-wrap:anywhere; }
+  .fisc-cli .campo.full { grid-column:1 / -1; }
+
+  /* Totales alineados a la derecha, con la base imponible separada */
+  .fisc-tot { display:flex; justify-content:flex-end; margin-top:12px; }
+  .fisc-tot table { width:auto; min-width:320px; margin:0; }
+  .fisc-tot td { padding:4px 10px; font-size:13px; border:0; }
+  .fisc-tot td.et { text-align:right; color:#555; }
+  .fisc-tot td.vl { text-align:right; font-weight:700; min-width:120px; }
+  .fisc-tot tr.sep td { border-top:1px solid #dfe6e2; }
+  .fisc-tot tr.grand td { font-size:17px; color:#fff; background:var(--doc-c); font-weight:800;
+    padding:8px 10px; }
+  .fisc-tot tr.grand td.et { color:#dff0e7; }
+  .fisc-tot tr.bs td { color:var(--doc-a); font-weight:700; }
+  .fisc-tot tr.tasa td { font-size:11px; color:#8a8a8a; font-weight:400; }
+
+  /* Aviso de que el documento no sustituye a una factura fiscal */
+  .fisc-aviso { margin-top:16px; border:1px dashed #c9b98a; background:#fdfaf1; border-radius:8px;
+    padding:8px 12px; font-size:10.5px; color:#7a6a3d; line-height:1.5; }
+  .fisc-aviso strong { color:#6a5a2d; }
+  table { width:100%; border-collapse:collapse; margin-top:6px; }
+  thead th { background:var(--doc-c); color:#fff; font-size:12px; text-align:left; padding:8px 10px; }
+  thead th.r { text-align:right; } thead th.c { text-align:center; }
+  tbody td { padding:8px 10px; border-bottom:1px solid #e5e9e7; font-size:13px; }
+  tbody td.r { text-align:right; } tbody td.c { text-align:center; }
+  tfoot td { padding:6px 10px; font-size:13px; }
+  tfoot td.lbl { text-align:right; font-weight:600; color:#444; }
+  tfoot td.val { text-align:right; font-weight:700; width:150px; }
+  tfoot tr.total td { font-size:16px; color:var(--doc-c); border-top:2px solid var(--doc-c); padding-top:10px; }
+  tfoot tr.bs td { color:var(--doc-a); }
+  .cmp-foot { margin-top:22px; border-top:1px solid #e5e9e7; padding-top:14px; font-size:11px; color:#777; line-height:1.6; }
+  .cmp-legal { font-style:italic; }
+  /* ---- Área de firma + fecha (factura / orden de recibo / presupuesto) ---- */
+  /* Firma y fecha en UNA sola línea, con un recuadro al lado para el sello:
+     hay clientes que sellan al recibir y otros no, así que el espacio existe
+     pero no grita. Compacto a propósito: la hoja tiene que caber en una página. */
+  .sign-area { display:flex; gap:18px; margin-top:26px; align-items:flex-end; }
+  .sign-area .sign-box { flex:1; padding-top:26px; font-size:11.5px; color:#333; }
+  .sign-area .sign-box .ln { display:block; border-top:1.1px solid #555; padding-top:4px; }
+  .sign-area .sello { width:150px; height:62px; border:1px dashed #c3ccc8; border-radius:6px;
+    display:flex; align-items:center; justify-content:center; font-size:9.5px; color:#a8b2ae;
+    letter-spacing:1px; text-transform:uppercase; flex-shrink:0; }
+  body.ticket .sign-area { flex-direction:column; align-items:stretch; gap:14px; margin-top:18px; }
+  body.ticket .sign-area .sello { width:100%; height:52px; }
+  .toolbar { max-width:820px; margin:0 auto 14px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+  .btn { border:0; border-radius:8px; padding:10px 18px; font-size:14px; font-weight:700; cursor:pointer; text-decoration:none; }
+  .btn-p { background:var(--doc-c); color:#fff; }
+  .btn-g { background:#dfe5e2; color:var(--doc-c); }
+  .loading, .err { max-width:820px; margin:40px auto; text-align:center; color:#555; }
+  .err { color:#b00; }
+
+  /* ---- Varias hojas en un solo documento (Factura + Orden de recibo) ---- */
+  .sheet + .sheet { margin-top:22px; }
+  .sheet { position:relative; }
+  .cut-note { max-width:820px; margin:10px auto -8px; text-align:center; font-size:11px;
+    color:#8a8a8a; letter-spacing:1px; }
+  @media print { .cut-note { display:none } }
+
+  /* ---- Marca de agua ANULADO (documentos rechazados/cancelados) ---- */
+  .voidmark { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:50; }
+  .voidmark span { font-size:104px; font-weight:900; color:rgba(176,0,0,.15); border:8px solid rgba(176,0,0,.15);
+    border-radius:16px; padding:4px 40px; transform:rotate(-20deg); letter-spacing:10px; text-transform:uppercase; }
+  body.ticket .voidmark span { font-size:52px; padding:2px 20px; letter-spacing:5px; border-width:5px; }
+
+  /* ---- Formato ticket (impresora térmica 80mm / recibo compacto) ---- */
+  body.ticket { background:#fff; padding:8px; }
+  body.ticket .sheet { max-width:340px; padding:14px 12px; box-shadow:none; border:1px dashed #bbb; border-radius:0;
+    font-size:12px; }
+  body.ticket .cmp-head { flex-direction:column; align-items:center; text-align:center; gap:6px;
+    border-bottom-width:2px; padding-bottom:10px; }
+  body.ticket .cmp-biz { flex-direction:column; gap:4px; text-align:center; }
+  body.ticket .cmp-biz img { width:44px; height:44px; }
+  body.ticket .cmp-biz h1 { font-size:16px; }
+  body.ticket .cmp-doc { text-align:center; }
+  body.ticket .cmp-doc .num { font-size:16px; margin-top:4px; }
+  body.ticket .cmp-parties { grid-template-columns:1fr; gap:8px; margin:10px 0; }
+  body.ticket .cmp-parties .box { padding:8px 10px; }
+  body.ticket thead th, body.ticket tbody td { padding:5px 6px; font-size:11px; }
+  body.ticket tfoot td { padding:4px 6px; font-size:12px; }
+  body.ticket tfoot td.val { width:auto; }
+  body.ticket tfoot tr.total td { font-size:14px; }
+  body.ticket .cmp-foot { margin-top:12px; padding-top:8px; font-size:10px; text-align:center; }
+  /* Formato fiscal en rollo de 80mm: todo a una columna y centrado */
+  body.ticket .fisc-head { flex-direction:column; align-items:center; text-align:center; gap:8px; }
+  body.ticket .fisc-biz { flex-direction:column; align-items:center; text-align:center; gap:5px; }
+  body.ticket .fisc-biz img { width:44px; height:44px; }
+  body.ticket .fisc-biz .razon { font-size:14px; }
+  body.ticket .fisc-biz .rif { font-size:11px; }
+  body.ticket .fisc-biz .dir { font-size:9.5px; }
+  body.ticket .fisc-doc { min-width:0; width:100%; }
+  body.ticket .fisc-doc .tipo { font-size:12px; letter-spacing:1px; padding:4px; }
+  body.ticket .fisc-doc .fila { font-size:10.5px; padding:3px 8px; }
+  body.ticket .fisc-cli .cuerpo { grid-template-columns:1fr; padding:8px 10px; }
+  body.ticket .fisc-cli .campo { font-size:10.5px; }
+  body.ticket .fisc-tot { justify-content:stretch; }
+  body.ticket .fisc-tot table { width:100%; min-width:0; }
+  body.ticket .fisc-tot td { font-size:11px; padding:3px 6px; }
+  body.ticket .fisc-tot tr.grand td { font-size:13px; padding:6px; }
+  body.ticket .fisc-aviso { font-size:9px; padding:6px 8px; }
+
+  @media print {
+    html, body { height:100%; }
+    body { background:#fff; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    @page { margin:10mm; }
+
+    /* Cada documento ocupa UNA página completa y ni un milímetro más.
+       Antes la hoja crecía libre y una factura con pocas líneas se comía
+       parte de la siguiente: dos documentos salían en tres páginas.
+       Con altura fija + columna flexible, el bloque de firmas queda
+       anclado abajo y el salto cae donde debe. */
+    .sheet {
+      box-shadow:none; border-radius:0; max-width:none; margin:0;
+      padding:4mm 5mm; min-height:100%;   /* la altura del papel, sea Carta o A4 */
+      display:flex; flex-direction:column;
+      break-after:page; page-break-after:always; break-inside:avoid;
+    }
+    .sheet:last-of-type { break-after:auto; page-break-after:auto; }
+
+    /* El espacio sobrante se lo queda la tabla, no los márgenes */
+    .sheet table { flex:0 0 auto; }
+    .sheet .fisc-tot { margin-top:10px; }
+    .sheet .sign-area { margin-top:auto; padding-top:14px; }
+    .sheet .fisc-aviso { margin-top:10px; }
+    .sheet .cmp-foot { margin-top:8px; padding-top:8px; }
+
+    /* Compactado para papel: en pantalla el documento respira, pero impreso
+       cada fila medía 57px y diez productos se comían media hoja. Con esto
+       entran ~20 líneas y la factura sigue cerrando en una sola página. */
+    .fisc-head { padding-bottom:7px; margin-bottom:7px; }
+    .fisc-biz { gap:10px; }
+    .fisc-biz img { width:42px; height:42px; }
+    .fisc-biz .razon { font-size:14px; }
+    .fisc-biz .rif { font-size:10.5px; margin-top:1px; }
+    .fisc-biz .dir { font-size:9px; line-height:1.3; margin-top:2px; }
+    .fisc-doc { min-width:200px; }
+    .fisc-doc .tipo { font-size:11.5px; padding:3px 8px; letter-spacing:1.4px; }
+    .fisc-doc .fila { font-size:9.5px; padding:2.5px 8px; }
+    .fisc-doc .control .vl { font-size:11px; }
+
+    .fisc-cli { margin:7px 0 2px; }
+    .fisc-cli .cab { font-size:9px; padding:2.5px 10px; letter-spacing:1px; }
+    .fisc-cli .cuerpo { padding:5px 10px; gap:0 14px; }
+    .fisc-cli .campo { font-size:10px; line-height:1.35; }
+
+    thead th { font-size:9px; padding:4px 8px; }
+    tbody td { font-size:9.5px; padding:2.5px 8px; }
+
+    .fisc-tot { margin-top:8px; }
+    .fisc-tot td { font-size:10px; padding:2px 8px; }
+    .fisc-tot tr.grand td { font-size:12.5px; padding:4px 8px; }
+    .fisc-tot tr.tasa td { font-size:8.5px; }
+
+    .sign-area { gap:14px; }
+    .sign-area .sign-box { padding-top:16px; font-size:10px; }
+    .sign-area .sello { width:124px; height:46px; font-size:8px; }
+    .fisc-aviso { font-size:8px; padding:5px 9px; line-height:1.35; margin-top:8px; }
+    .cmp-foot { font-size:8.5px; margin-top:6px; padding-top:6px; line-height:1.4; }
+
+    /* !important: el JS pone display:flex inline al mostrar la barra; sin
+       !important el estilo inline ganaría y la barra se imprimiría. */
+    .toolbar { display:none !important; }
+
+    body.ticket .sheet { border:0; max-width:none; padding:2mm; height:auto; display:block; overflow:visible; }
+    body.ticket { padding:0; }
+  }
+</style>
+<!-- Tamaño de página dinámico: en formato ticket usa rollo 80mm; en carta, hoja normal -->
+<style id="pageStyle"></style>
+</head>
+<body>
+<div class="toolbar" id="toolbar" style="display:none">
+  <select class="btn btn-g" id="docSel" onchange="setDocType(this.value)" style="display:none">
+    <option value="factura">📄 Factura</option>
+    <option value="recibo">📦 Orden de recibo</option>
+    <option value="comprobante">🧾 Comprobante</option>
+    <option value="ambos">📄+📦 Factura + Orden de recibo</option>
+  </select>
+  <button class="btn btn-g" id="fmtBtn" onclick="toggleFormat()">🧾 Ver como ticket</button>
+  <button class="btn btn-p" onclick="window.print()">🖨️ Imprimir</button>
+  <button class="btn btn-g" onclick="window.close()">Cerrar</button>
+</div>
+<div id="content"><div class="loading">Cargando comprobante…</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/admin/auth.js"></script>
+<script>
+let ORDER = null;
+// factura | recibo | comprobante | presupuesto | ambos (= factura + orden de recibo)
+let DOC_TYPE = 'comprobante';
+
+// Los tipos que se dibujan, en orden. 'ambos' saca las dos hojas en una sola
+// impresión: primero la factura, después la orden de recibo para firmar.
+const DOC_TYPES = { ambos: ['factura', 'recibo'] };
+function docTypeList(t) { return DOC_TYPES[t] || [t]; }
+
+(async () => {
+  const content = document.getElementById('content');
+  const session = await requireAuth('vendedor');   // admin o vendedor
+  if (!session) return;
+  await loadSettings();
+  applyDocTheme();
+
+  const params = new URLSearchParams(location.search);
+  const orderNum = params.get('n');
+  const quoteNum = params.get('q');   // ?q=<quote_number> → imprime PRESUPUESTO
+  if (!orderNum && !quoteNum) { content.innerHTML = '<div class="err">Falta el número de documento (?n=... o ?q=...)</div>'; return; }
+
+  // Formato inicial: ?f=ticket|carta manda; si no, el ajuste doc_paper
+  const s = APP.SETTINGS || {};
+  const f = params.get('f') || s.doc_paper || 'carta';
+  setFormat(f === 'ticket');
+
+  let docData;
+  if (quoteNum) {
+    DOC_TYPE = 'presupuesto';
+    const { data: q, error } = await sb.from('jjp_quotes').select('*').eq('quote_number', quoteNum).maybeSingle();
+    if (error || !q) { content.innerHTML = '<div class="err">No se encontró la cotización ' + escapeHTML(quoteNum) + '.</div>'; return; }
+    docData = normalizeQuote(q);
+  } else {
+    // ?t=factura|recibo|comprobante|ambos (por defecto comprobante).
+    // 'factura+recibo' llega como 'factura recibo' (el + se decodifica a espacio).
+    let t = (params.get('t') || 'comprobante').toLowerCase().trim();
+    if (/^factura[\s+,]+recibo$/.test(t)) t = 'ambos';
+    DOC_TYPE = ['factura', 'recibo', 'comprobante', 'ambos'].includes(t) ? t : 'comprobante';
+    const { data: o, error } = await sb.from('jjp_orders').select('*').eq('order_number', orderNum).maybeSingle();
+    if (error || !o) { content.innerHTML = '<div class="err">No se encontró el pedido ' + escapeHTML(orderNum) + '.</div>'; return; }
+    docData = o;
+  }
+
+  ORDER = docData;
+  render(docData);
+  document.getElementById('toolbar').style.display = 'flex';
+  // El selector de tipo (Factura/Recibo/Comprobante) solo aplica a pedidos
+  const ds = document.getElementById('docSel');
+  if (ds && DOC_TYPE !== 'presupuesto') { ds.value = DOC_TYPE; ds.style.display = ''; }
+  if (params.get('print') === '1') setTimeout(() => window.print(), 400);
+})();
+
+// Cambia el tipo de documento en vivo (mismo pedido → factura o recibo)
+function setDocType(t) { DOC_TYPE = t; if (ORDER) render(ORDER); }
+
+// Convierte una cotización (jjp_quotes) en un objeto con la MISMA forma que un
+// pedido para reusar render(). Es solo para imprimir: no persiste nada.
+function normalizeQuote(q) {
+  const items = typeof q.items === 'string' ? JSON.parse(q.items) : (q.items || []);
+  const subtotal = items.reduce((sum, i) => sum + Number(i.subtotal_usd ?? (Number(i.price_usd) || 0) * (Number(i.qty) || 0)), 0);
+  const total = Number(q.estimated_total_usd) || subtotal;
+  return {
+    order_number: q.quote_number,
+    client_name: q.client_name, rif: q.rif, phone: q.phone, email: q.email,
+    city: q.city, address: q.address,
+    items, subtotal_usd: subtotal, total_usd: total,
+    discount_pct: q.discount_pct,
+    discount_status: Number(q.discount_pct) > 0 ? 'approved' : 'none',
+    exchange_rate: q.exchange_rate,
+    payment_method: null, payment_ref: null,
+    notes: q.notes, status: q.status, created_at: q.created_at,
+  };
+}
+
+// Aplica colores/tema del documento configurados en Ajustes
+function applyDocTheme() {
+  const s = APP.SETTINGS || {};
+  const okColor = c => /^#[0-9a-fA-F]{3,8}$/.test((c || '').trim());
+  if (okColor(s.doc_color))  document.documentElement.style.setProperty('--doc-c', s.doc_color.trim());
+  if (okColor(s.doc_accent)) document.documentElement.style.setProperty('--doc-a', s.doc_accent.trim());
+}
+
+function setFormat(ticket) {
+  document.body.classList.toggle('ticket', ticket);
+  const btn = document.getElementById('fmtBtn');
+  if (btn) btn.textContent = ticket ? '📄 Ver como carta' : '🧾 Ver como ticket';
+  // En ticket, la hoja de impresión se ajusta al rollo térmico de 80mm
+  const ps = document.getElementById('pageStyle');
+  if (ps) ps.textContent = ticket ? '@media print{ @page{ size:80mm auto; margin:4mm 3mm } }' : '';
+}
+function toggleFormat() { setFormat(!document.body.classList.contains('ticket')); }
+
+// Dibuja el documento: una hoja, o dos si el tipo es 'ambos'
+function render(o) {
+  const tipos = docTypeList(DOC_TYPE);
+  document.getElementById('content').innerHTML = tipos
+    .map((t, i) => (i ? '<div class="cut-note">— — — — —  hoja ' + (i + 1) + ' de ' + tipos.length + '  — — — — —</div>' : '') + sheet(o, t))
+    .join('');
+}
+
+function sheet(o, docType) {
+  const s = APP.SETTINGS || {};
+  const isQuote = docType === 'presupuesto';
+  const items = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+  const rate = Number(o.exchange_rate) || getRate();
+  const total = Number(o.total_usd) || 0;
+  // Documento sin validez: rechazado/cancelado/anulado/descartado → marca de agua
+  const voided = ['rechazado','cancelado','anulado','descartado','descartada'].includes(String(o.status || '').toLowerCase());
+
+  // IVA desglosado sobre precios IVA-incluido (jjp_settings.iva_pct; 0 = no desglosar).
+  // El precio de lista YA trae el impuesto: se calcula hacia atrás, así que el
+  // cliente paga lo mismo con o sin desglose.
+  const ivaPct = s.iva_pct !== undefined && s.iva_pct !== '' ? parseFloat(s.iva_pct) : 16;
+  const base   = ivaPct > 0 ? total / (1 + ivaPct / 100) : total;
+  const iva    = total - base;
+
+  // El monto del descuento se calcula sobre el subtotal de productos:
+  // total puede incluir el envío y restar (subtotal - total) daría mal.
+  const descMonto = (o.discount_status === 'approved' && o.discount_pct > 0)
+    ? (Number(o.subtotal_usd) || 0) * Number(o.discount_pct) / 100 : 0;
+
+  // Textos y logo personalizables
+  const bizName  = s.business_name || s.site_name || 'JJ Paper';
+  const TITLES   = { factura:'FACTURA', recibo:'ORDEN DE RECIBO', presupuesto:'PRESUPUESTO', comprobante:(s.doc_title || 'COMPROBANTE') };
+  const docTitle = TITLES[docType] || (s.doc_title || 'COMPROBANTE');
+  const logoUrl  = s.doc_logo_url || 'assets/img/logo.svg';
+  const legal    = docType === 'presupuesto'
+    ? 'Presupuesto sin validez fiscal. Precios sujetos a cambio según la tasa del día y la disponibilidad de inventario.'
+    : docType === 'recibo'
+      ? 'Orden de recibo / entrega de mercancía. La firma del cliente deja constancia de recepción conforme.'
+      : (s.doc_footer_legal !== undefined && s.doc_footer_legal !== ''
+          ? s.doc_footer_legal
+          : 'Este documento es un comprobante interno de la operación y NO constituye una factura fiscal a los efectos del SENIAT.');
+  // Etiquetas del área de firma según el tipo de documento
+  // Una sola línea para firma y fecha; el sello va en su propio recuadro al lado
+  const signLabels = {
+    factura:     ['Firma y fecha del cliente'],
+    recibo:      ['Recibí conforme — firma y fecha'],
+    presupuesto: ['Firma de aceptación y fecha'],
+    comprobante: ['Firma y fecha'],
+  }[docType] || ['Firma y fecha'];
+  const footNote = s.doc_footer_note || 'Gracias por su compra.';
+  // El texto legal se escribe desde Ajustes y suele pegarse entre comillas:
+  // se limpian para que no salgan impresas en el documento.
+  const legalLimpio = String(legal || '').trim().replace(/^["“”']+|["“”']+$/g, '');
+  const method = { pago_movil:'Pago Móvil', transferencia:'Transferencia', efectivo:'Efectivo' }[o.payment_method] || o.payment_method || '—';
+  const condicion = (o.payment_ref || ['pagado','preparando','entregado'].includes(o.status)) ? 'Contado' : 'Por confirmar';
+
+  // Una línea de la tabla. La alícuota va por línea, como en una factura formal.
+  const rows = items.map(i => {
+    const sub = Number(i.subtotal_usd ?? i.price_usd * i.qty) || 0;
+    return `<tr>
+      <td class="c" style="color:#888;font-size:10.5px;white-space:nowrap">${escapeHTML(i.sku || '—')}</td>
+      <td>${escapeHTML(i.name || i.product || '—')}${i.brand ? ` <small style="color:#888">(${escapeHTML(i.brand)})</small>` : ''}</td>
+      <td class="c">${i.qty} ${escapeHTML(i.unit || '')}</td>
+      <td class="r">${fmtPrice(i.price_usd)}</td>
+      ${ivaPct > 0 ? `<td class="c" style="color:#666">${ivaPct}%</td>` : ''}
+      <td class="r">${fmtPrice(sub)}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+  <div class="sheet">
+    ${voided ? '<div class="voidmark"><span>Anulado</span></div>' : ''}
+
+    <div class="fisc-head">
+      <div class="fisc-biz">
+        <img src="${escapeHTML(logoUrl)}" alt="">
+        <div style="min-width:0">
+          <div class="razon">${escapeHTML(bizName)}</div>
+          ${s.rif ? `<div class="rif">RIF: ${escapeHTML(s.rif)}</div>` : ''}
+          <div class="dir">
+            ${s.address ? `<span class="et">Domicilio fiscal:</span> ${escapeHTML(s.address)}<br>` : ''}
+            ${(s.phone_display || s.whatsapp_number) ? `<span class="et">Teléfono:</span> ${escapeHTML(s.phone_display || s.whatsapp_number)}` : ''}
+            ${s.email ? `${(s.phone_display || s.whatsapp_number) ? ' · ' : ''}<span class="et">Correo:</span> ${escapeHTML(s.email)}` : ''}
+          </div>
+        </div>
+      </div>
+      <div class="fisc-doc">
+        <div class="tipo">${escapeHTML(docTitle)}</div>
+        <div class="fila"><span class="et">N°</span><span class="vl">${escapeHTML(o.order_number || '')}</span></div>
+        ${o.control_number ? `<div class="fila control"><span class="et">N° de Control</span><span class="vl">${escapeHTML(o.control_number)}</span></div>` : ''}
+        <div class="fila"><span class="et">Fecha de emisión</span><span class="vl">${fmtDate(o.created_at)}</span></div>
+        ${isQuote ? '' : `<div class="fila"><span class="et">Condición</span><span class="vl">${condicion}</span></div>`}
+      </div>
+    </div>
+
+    <div class="fisc-cli">
+      <div class="cab">Datos del cliente</div>
+      <div class="cuerpo">
+        <div class="campo full"><span class="et">Razón social / Nombre:</span><span class="vl">${escapeHTML(o.client_name || '—')}</span></div>
+        <div class="campo"><span class="et">RIF / C.I.:</span><span class="vl">${escapeHTML(o.rif || '—')}</span></div>
+        <div class="campo"><span class="et">Teléfono:</span><span class="vl">${escapeHTML(o.phone || '—')}</span></div>
+        <div class="campo full"><span class="et">Domicilio fiscal:</span><span class="vl">${escapeHTML([o.address, o.city].filter(Boolean).join(', ') || '—')}</span></div>
+        ${isQuote ? '' : `
+        <div class="campo"><span class="et">Forma de pago:</span><span class="vl">${escapeHTML(method)}</span></div>
+        <div class="campo"><span class="et">Referencia:</span><span class="vl">${escapeHTML(o.payment_ref || '—')}</span></div>`}
+      </div>
+    </div>
+
+    <table>
+      <thead><tr>
+        <th class="c" style="width:96px">Código</th>
+        <th>Descripción</th>
+        <th class="c" style="width:82px">Cant.</th>
+        <th class="r" style="width:92px">Precio Unit.</th>
+        ${ivaPct > 0 ? '<th class="c" style="width:56px">Alíc.</th>' : ''}
+        <th class="r" style="width:104px">Total</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+
+    <div class="fisc-tot">
+      <table>
+        ${descMonto > 0 ? `
+        <tr><td class="et">Subtotal</td><td class="vl">${fmtPrice(Number(o.subtotal_usd) || 0)}</td></tr>
+        <tr><td class="et">Descuento ${o.discount_pct}%</td><td class="vl">−${fmtPrice(descMonto)}</td></tr>` : ''}
+        ${o.delivery_type === 'delivery' ? `
+        <tr><td class="et">Envío${o.delivery_distance_km ? ` (~${o.delivery_distance_km} km)` : ''}</td>
+            <td class="vl">${Number(o.delivery_fee_usd) > 0 ? fmtPrice(o.delivery_fee_usd) : 'Gratis'}</td></tr>` : ''}
+        ${ivaPct > 0 ? `
+        <tr class="sep"><td class="et">Base imponible</td><td class="vl">${fmtPrice(base)}</td></tr>
+        <tr><td class="et">IVA (${ivaPct}%)</td><td class="vl">${fmtPrice(iva)}</td></tr>` : ''}
+        <tr class="grand"><td class="et">TOTAL A PAGAR (USD)</td><td class="vl">${fmtPrice(total)}</td></tr>
+        ${s.doc_show_bs === '0' ? '' : `
+        <tr class="bs"><td class="et">TOTAL (Bs)</td><td class="vl">${fmtBsNum(total * rate)}</td></tr>
+        <tr class="tasa"><td class="et">Tasa BCV del día</td><td class="vl" style="font-weight:400">Bs ${rate.toFixed(2)} / $</td></tr>`}
+      </table>
+    </div>
+
+    <div class="sign-area">
+      <div class="sign-box"><span class="ln">${signLabels[0]}</span></div>
+      <div class="sello">Sello</div>
+    </div>
+
+    <div class="fisc-aviso">
+      <strong>Documento sin valor fiscal.</strong>
+      ${escapeHTML(legalLimpio)}
+    </div>
+
+    <div class="cmp-foot">
+      ${o.notes ? '<p><strong>Notas:</strong> ' + escapeHTML(o.notes) + '</p>' : ''}
+      <p>${escapeHTML(bizName)} · ${escapeHTML(footNote)}</p>
+    </div>
+  </div>`;
+}
+</script>
+</body>
+</html>
