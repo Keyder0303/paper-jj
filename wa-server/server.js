@@ -2,11 +2,13 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, makeCach
 const { createClient } = require('@supabase/supabase-js');
 const express = require('express');
 const http = require('http');
-const dotenv.config ? dotenv.config() : require('dotenv').config();
+const dotenv = require('dotenv');
 const pino = require('pino');
 const qrcode = require('qrcode-terminal');
 const path = require('path');
 const fs = require('fs');
+
+dotenv.config();
 
 const app = express();
 app.use(express.json());
@@ -21,7 +23,7 @@ let latestQR = null;
 let connectionStatus = 'disconnected';
 
 async function startWhatsApp() {
-  const authFolder = path.join(__dirname, '../wa-session');
+  const authFolder = path.join(__dirname, '../sessions');
   if (!fs.existsSync(authFolder)) {
     fs.mkdirSync(authFolder, { recursive: true });
   }
@@ -80,13 +82,17 @@ async function startWhatsApp() {
           direction: 'inbound',
           status: 'received',
           created_at: new Date()
-        }].catch(err => console.error('Error guardando mensaje:', err.message)));
+        }]).catch(err => console.error('Error guardando mensaje:', err.message));
       }
     }
   });
 }
 
 // Endpoints API para el Front
+app.get('/health', (req, res) => {
+  res.json({ status: connectionStatus, service: 'paper-puente-server', timestamp: new Date() });
+});
+
 app.get('/api/wa/status', (req, res) => {
   res.json({ status: connectionStatus, qr: latestQR });
 });

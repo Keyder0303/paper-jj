@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paper Puente — Hub Operativo de Comunicaciones</title>
+  <link rel="stylesheet" href="assets/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Librería QRCode para renderizar el QR en pantalla -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="brand">Paper Puente <span>Hub v1.0</span></div>
+    <button class="nav-btn active" onclick="navigate('dashboard', this)">📊 Dashboard General</button>
+    <button class="nav-btn" onclick="navigate('whatsapp', this)">💬 WhatsApp & Baileys</button>
+    <button class="nav-btn" onclick="navigate('correo', this)">📧 Correo (Gmail)</button>
+    <button class="nav-btn" onclick="navigate('difusion', this)">📢 Campañas Masivas</button>
+    <button class="nav-btn" onclick="navigate('clientes', this)">👥 Clientes y Zonas</button>
+    <button class="nav-btn" onclick="navigate('catalogo', this)">📦 Catálogo Interno</button>
+    <button class="nav-btn" onclick="navigate('pedidos', this)">🛒 Pedidos y Captación</button>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <h2 id="page-title">Dashboard General</h2>
+      <div class="db-badge">Supabase: klcibjwleiqppedefpxw</div>
+    </div>
+    <div class="content" id="app-view">
+      <!-- Inyección dinámica -->
+    </div>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
