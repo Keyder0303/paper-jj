@@ -2,20 +2,31 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, makeCach
 const { createClient } = require('@supabase/supabase-js');
 const express = require('express');
 const http = require('http');
-const dotenv = require('dotenv');
-const pino = require('pino');
-const qrcode = require('qrcode-terminal');
 const path = require('path');
 const fs = require('fs');
+const pino = require('pino');
+const qrcode = require('qrcode-terminal');
 
-dotenv.config();
+// Leer .env manual y robusto
+const envPath = path.join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+  lines.forEach(line => {
+    const parts = line.trim().split('=');
+    if (parts.length >= 2) {
+      const key = parts[0].trim();
+      const val = parts.slice(1).join('=').trim();
+      process.env[key] = val;
+    }
+  });
+}
 
 const app = express();
 app.use(express.json());
 const server = http.createServer(app);
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://klcibjwleiqppedefpxw.supabase.co';
-const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE || '';
+const SUPABASE_SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsY2liandsZWlxcHBlZGVmcHh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NTE3OTYsImV4cCI6MjEwMzMyNzc5Nn0.eE2UYJSX9yKK-1u2sv2aF-G1Rp7yho1Myz1-kSttz6g';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
 let sock = null;
@@ -23,7 +34,7 @@ let latestQR = null;
 let connectionStatus = 'disconnected';
 
 async function startWhatsApp() {
-  const authFolder = path.join(__dirname, '../sessions');
+  const authFolder = path.join(__dirname, 'sessions');
   if (!fs.existsSync(authFolder)) {
     fs.mkdirSync(authFolder, { recursive: true });
   }
@@ -47,20 +58,20 @@ async function startWhatsApp() {
     if (qr) {
       latestQR = qr;
       connectionStatus = 'qr_ready';
-      console.log('📱 Nuevo código QR generado. Escanéalo en la interfaz web o terminal.');
+      console.log('📱 QR Code generado para WhatsApp Web:');
       qrcode.generate(qr, { small: true });
     }
     if (connection === 'close') {
       const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
       connectionStatus = 'disconnected';
-      console.log('⚠️ Conexión cerrada. Reconectando:', shouldReconnect);
+      console.log('⚠️ Conexión de WhatsApp cerrada. Reconectando:', shouldReconnect);
       if (shouldReconnect) {
         setTimeout(startWhatsApp, 5000);
       }
     } else if (connection === 'open') {
       connectionStatus = 'connected';
       latestQR = null;
-      console.log('✅ WhatsApp conectado exitosamente con Baileys.');
+      console.log('✅ Baileys WhatsApp conectado exitosamente.');
     }
   });
 
@@ -75,20 +86,20 @@ async function startWhatsApp() {
       const text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
       
       if (text) {
-        console.log(`📩 Mensaje entrante de ${phone}: ${text}`);
+        console.log(`📩 Mensaje entrante [${phone}]: ${text}`);
         await supabase.from('jjp_wa_messages').insert([{
           phone: phone,
           message: text,
           direction: 'inbound',
           status: 'received',
           created_at: new Date()
-        }]).catch(err => console.error('Error guardando mensaje:', err.message));
+        }]).catch(err => console.error('DB Insert Error:', err.message));
       }
     }
   });
 }
 
-// Endpoints API para el Front
+// API Endpoints
 app.get('/health', (req, res) => {
   res.json({ status: connectionStatus, service: 'paper-puente-server', timestamp: new Date() });
 });
@@ -121,7 +132,7 @@ app.post('/api/wa/send', async (req, res) => {
   }
 });
 
-// Heartbeat con Supabase
+// Heartbeat automático
 setInterval(async () => {
   try {
     await supabase.from('jjp_server_control').upsert({ id: 1, status: connectionStatus, updated_at: new Date() });
@@ -130,6 +141,6 @@ setInterval(async () => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor y Motor Baileys corriendo en el puerto ${PORT}`);
+  console.log(`🚀 Servidor Paper Puente escuchando en el puerto ${PORT}`);
   startWhatsApp();
 });
