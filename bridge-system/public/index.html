@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paper Puente Pro — Hub Operativo Avanzado</title>
+  <link rel="stylesheet" href="assets/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+
+  <div class="sidebar">
+    <div class="brand">Paper Puente <span>Pro v2.0</span></div>
+    <button class="nav-btn active" onclick="navigate('dashboard', this)">📊 Dashboard General</button>
+    <button class="nav-btn" onclick="navigate('whatsapp', this)">💬 WhatsApp Web Baileys</button>
+    <button class="nav-btn" onclick="navigate('correo', this)">📧 Correo Gmail HTML</button>
+    <button class="nav-btn" onclick="navigate('difusion', this)">📢 Campañas Masivas</button>
+    <button class="nav-btn" onclick="navigate('clientes', this)">👥 CRM Clientes y Zonas</button>
+    <button class="nav-btn" onclick="navigate('catalogo', this)">📦 Catálogo e Inventario</button>
+    <button class="nav-btn" onclick="navigate('pedidos', this)">🛒 Órdenes y Pedidos</button>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <h2 id="page-title">Dashboard General</h2>
+      <div class="db-badge">Supabase: czzvsqnmxtjzqzioknnn</div>
+    </div>
+    <div class="content" id="app-view">
+      <!-- Inyección dinámica -->
+    </div>
+  </div>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
