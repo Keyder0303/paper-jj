@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#00140f">
+<title>Escáner | JJ Paper</title>
+<link rel="icon" href="../assets/img/logo.svg">
+<style>
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:#00140f; color:#eaf5ee;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { min-height:100%; display:flex; flex-direction:column; padding:12px; gap:9px;
+    padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
+  header { display:flex; align-items:center; gap:10px; }
+  header img { width:32px; height:32px; }
+  header h1 { font-size:16px; margin:0; font-weight:700; }
+  header .who { margin-left:auto; font-size:12px; color:#b6e05a; font-weight:700; text-align:right;
+    cursor:pointer; display:flex; flex-direction:column; align-items:flex-end; line-height:1.15; }
+  header .who small { color:#6f9583; font-weight:400; font-size:10px; }
+
+  /* Estado del puente con la PC */
+  .link-state { display:flex; align-items:center; justify-content:center; gap:7px;
+    font-size:12px; font-weight:600; padding:7px 12px; border-radius:999px;
+    max-width:560px; margin:0 auto; width:100%; }
+  .link-state.on   { background:rgba(153,204,51,.15); color:#b6e05a; }
+  .link-state.wait { background:rgba(201,162,75,.15); color:#e3bd6f; }
+  .link-state.off  { background:rgba(220,90,80,.15);  color:#ff9d94; }
+  .dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
+  .link-state.on .dot { animation:pulse 1.8s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  .cam { position:relative; width:100%; max-width:560px; margin:0 auto; aspect-ratio:3/4;
+    max-height:44vh; background:#000; border-radius:16px; overflow:hidden; }
+  .cam video { width:100%; height:100%; object-fit:cover; }
+  .reticle { position:absolute; inset:26% 12%; border:3px solid #99CC33; border-radius:12px;
+    box-shadow:0 0 0 4000px rgba(0,0,0,.25); pointer-events:none; transition:border-color .2s; }
+  .cam.hit  .reticle { border-color:#b6e05a; }
+  .cam.miss .reticle { border-color:#ffb020; }
+
+  /* Última respuesta de la PC — lo que antes no existía: saber QUÉ escaneaste */
+  .feedback { max-width:560px; margin:0 auto; width:100%; border-radius:14px; padding:12px 14px;
+    background:#0c231b; border:1px solid #2c5647; min-height:66px;
+    display:flex; align-items:center; gap:12px; }
+  .feedback.ok  { background:#0e2b1d; border-color:#3f7a3a; }
+  .feedback.new { background:#33260f; border-color:#c9902b; }
+  .feedback.err { background:#3a1414; border-color:#a34; }
+  .fb-icon { font-size:26px; line-height:1; }
+  .fb-body { flex:1; min-width:0; }
+  .fb-name { font-size:15px; font-weight:700; line-height:1.25; }
+  .fb-sub  { font-size:12px; color:#9fc7b3; margin-top:3px; word-break:break-all; }
+  .fb-count { font-size:30px; font-weight:800; color:#99CC33; line-height:1; }
+
+  .stats { display:flex; gap:8px; max-width:560px; margin:0 auto; width:100%; }
+  .stat { flex:1; background:#0c231b; border:1px solid #1e4033; border-radius:12px;
+    padding:8px; text-align:center; }
+  .stat b { display:block; font-size:20px; color:#99CC33; line-height:1.1; }
+  .stat span { font-size:10px; color:#9fc7b3; }
+
+  .manual { display:flex; gap:8px; width:100%; max-width:560px; margin:0 auto; }
+  .manual input { flex:1; height:46px; border-radius:12px; border:1px solid #2c5647;
+    background:#0c231b; color:#eaf5ee; padding:0 14px; font-size:16px; }
+  .btn { height:46px; border:0; border-radius:12px; font-size:15px; font-weight:700;
+    padding:0 16px; cursor:pointer; }
+  .btn-p { background:#99CC33; color:#06231a; }
+  .btn-g { background:#16604A; color:#eaf5ee; }
+
+  /* Historial de la sesión */
+  .hist { max-width:560px; margin:0 auto; width:100%; }
+  .hist h2 { font-size:12px; color:#9fc7b3; margin:0 0 6px; font-weight:600; }
+  .hist-list { display:flex; flex-direction:column; gap:5px; max-height:26vh; overflow-y:auto; }
+  .hist-row { display:flex; align-items:center; gap:8px; font-size:13px;
+    background:#0a1d16; border-radius:9px; padding:7px 10px; }
+  .hist-row .h-ico { font-size:14px; }
+  .hist-row .h-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hist-row .h-n { color:#99CC33; font-weight:700; }
+
+  .foot { text-align:center; font-size:11px; color:#6f9583; padding-top:4px; }
+  .warn { background:#3a2410; border:1px solid #c9902b; color:#ffd699; border-radius:12px;
+    padding:12px; font-size:14px; text-align:center; max-width:560px; margin:0 auto; }
+
+  /* ¿Quién cuenta? — etiqueta de persona/dispositivo (login compartido) */
+  .dev-modal { position:fixed; inset:0; background:rgba(0,10,7,.94); display:none;
+    align-items:center; justify-content:center; padding:20px; z-index:50; }
+  .dev-modal.op { display:flex; }
+  .dev-card { background:#0c231b; border:1px solid #2c5647; border-radius:18px;
+    padding:22px; max-width:420px; width:100%; }
+  .dev-card h2 { margin:0 0 6px; font-size:19px; }
+  .dev-card p { margin:0 0 15px; font-size:13px; color:#9fc7b3; line-height:1.4; }
+  .dev-card input { width:100%; height:50px; border-radius:12px; border:1px solid #2c5647;
+    background:#0a1d16; color:#eaf5ee; padding:0 15px; font-size:16px; margin-bottom:12px; }
+  .dev-recent { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .dev-chip { background:#123a2c; border:1px solid #2c5647; color:#eaf5ee; border-radius:999px;
+    padding:9px 15px; font-size:14px; cursor:pointer; }
+  .dev-card .btn-p { width:100%; height:50px; }
+</style>
+<link rel="stylesheet" href="../assets/css/perf.css">
+<script src="../assets/js/perf.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="../assets/img/logo.svg" alt="JJ Paper">
+    <h1>Escáner de inventario</h1>
+    <div class="who" id="who" onclick="openDevModal()" title="Cambiar quién cuenta">…<small>tocar para cambiar</small></div>
+  </header>
+
+  <div class="link-state wait" id="linkState"><span class="dot"></span><span id="linkTxt">Conectando con la PC…</span></div>
+
+  <div class="cam" id="cam">
+    <video id="video" playsinline muted></video>
+    <div class="reticle"></div>
+  </div>
+
+  <div class="feedback" id="feedback">
+    <div class="fb-icon">📦</div>
+    <div class="fb-body">
+      <div class="fb-name">Listo para escanear</div>
+      <div class="fb-sub">Apunta al código de barras del producto</div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b id="stCount">0</b><span>escaneos</span></div>
+    <div class="stat"><b id="stItems">0</b><span>productos</span></div>
+    <div class="stat"><b id="stQueue">0</b><span>en cola</span></div>
+  </div>
+
+  <form class="manual" id="manualForm">
+    <input type="text" id="manual" placeholder="O escribe/pega el código…" autocomplete="off" inputmode="numeric">
+    <button class="btn btn-p" type="submit">Enviar</button>
+  </form>
+
+  <div class="hist">
+    <h2>Esta sesión</h2>
+    <div class="hist-list" id="hist"></div>
+  </div>
+
+  <div class="foot">
+    Cada código viaja a tu PC (Inventario → 📷 Modo conteo) en vivo.<br>
+    Mantén esta pantalla abierta mientras cuentas.
+  </div>
+</div>
+
+<!-- ¿Quién cuenta? Varias personas comparten el login; cada una se identifica -->
+<div class="dev-modal" id="devModal">
+  <form class="dev-card" id="devForm">
+    <h2>¿Quién está contando?</h2>
+    <p>Escribe tu nombre o el del área (ej: <b>María</b>, <b>Pasillo 3</b>, <b>Depósito</b>).
+       Sirve para saber quién contó cada cosa y avisar si dos personas cuentan lo mismo.</p>
+    <div class="dev-recent" id="devRecent"></div>
+    <input type="text" id="devInput" placeholder="Tu nombre o área…" maxlength="32" autocomplete="off">
+    <button class="btn btn-p" type="submit">Empezar a contar</button>
+  </form>
+</div>
+
+<div class="toast-c" id="toastC"></div>
+
+<script src="../assets/vendor/supabase-2.58.0.js"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/toast.js"></script>
+<script src="../assets/js/admin/auth.js"></script>
+<script src="../assets/js/admin/sidenav.js?v=20260819b"></script>
+<script>
+let escStream = null, escDetector = null, escTimer = null;
+let escCount = 0;                          // escaneos contados
+const escSeen = {};                        // code -> última vez visto (anti-doble-lectura)
+const escItems = new Set();                // productos distintos contados
+let escQueue = [];                         // códigos pendientes (sin señal)
+let escWakeLock = null;
+let escDevice = '';                        // quién cuenta (etiqueta compartida)
+
+const $ = id => document.getElementById(id);
+const SESSION = 'default';
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Login compartido: varias personas usan la misma cuenta y cada una se
+  // identifica con un nombre/área. El conteo va DIRECTO a la base (RPC),
+  // ya no depende de que una PC esté abierta procesando.
+  const session = await requireAuth('vendedor');
+  if (!session) return;
+
+  escQueue  = JSON.parse(localStorage.getItem('jjp_scan_queue') || '[]');
+  escDevice = localStorage.getItem('jjp_scan_device') || '';
+  renderStats();
+
+  $('manualForm').addEventListener('submit', onManual);
+  $('devForm').addEventListener('submit', onDevSubmit);
+
+  if (!escDevice) openDevModal(true);
+  else $('who').innerHTML = escHtml(escDevice) + '<small>tocar para cambiar</small>';
+
+  await keepAwake();
+  await startCamera();
+  setLink('on', 'Contando');
+  flushQueue();
+  setInterval(flushQueue, 5000);           // reintenta lo que quedó en cola
+  window.addEventListener('online', () => { setLink('on', 'Contando'); flushQueue(); });
+  window.addEventListener('offline', () => setLink('off', 'Sin señal — se cuenta en cola'));
+});
+
+// ---- ¿Quién cuenta? (etiqueta de persona/dispositivo) ----
+function recentDevices(){
+  try { return JSON.parse(localStorage.getItem('jjp_scan_devices') || '[]'); } catch (e) { return []; }
+}
+function rememberDevice(name){
+  const list = recentDevices().filter(d => d.toLowerCase() !== name.toLowerCase());
+  list.unshift(name);
+  localStorage.setItem('jjp_scan_devices', JSON.stringify(list.slice(0, 6)));
+}
+function openDevModal(first){
+  const list = recentDevices();
+  $('devRecent').innerHTML = list.length
+    ? list.map(d => `<button type="button" class="dev-chip" onclick="pickDevice('${escHtml(d)}')">${escHtml(d)}</button>`).join('')
+    : '';
+  $('devInput').value = first ? '' : escDevice;
+  $('devModal').classList.add('op');
+  setTimeout(() => $('devInput').focus(), 60);
+}
+function pickDevice(name){ $('devInput').value = name; onDevSubmit(); }
+function onDevSubmit(ev){
+  if (ev && ev.preventDefault) ev.preventDefault();
+  const name = ($('devInput').value || '').trim().slice(0, 32);
+  if (!name){ if (typeof showToast === 'function') showToast('Escribe tu nombre para saber quién cuenta', 'warn'); return; }
+  escDevice = name;
+  localStorage.setItem('jjp_scan_device', name);
+  rememberDevice(name);
+  $('who').innerHTML = escHtml(name) + '<small>tocar para cambiar</small>';
+  $('devModal').classList.remove('op');
+}
+
+function setLink(kind, txt){
+  $('linkState').className = 'link-state ' + kind;
+  $('linkTxt').textContent = txt;
+}
+
+function showFeedback(kind, icon, name, sub, count){
+  $('feedback').className = 'feedback ' + kind;
+  $('feedback').innerHTML =
+    `<div class="fb-icon">${icon}</div>
+     <div class="fb-body">
+       <div class="fb-name">${escHtml(name)}</div>
+       <div class="fb-sub">${escHtml(sub)}</div>
+     </div>` +
+    (count != null ? `<div class="fb-count">${count}</div>` : '');
+}
+
+function addHist(ico, name, n){
+  const el = document.createElement('div');
+  el.className = 'hist-row';
+  el.innerHTML = `<span class="h-ico">${ico}</span><span class="h-name">${escHtml(name)}</span>` +
+    (n != null ? `<span class="h-n">${n}</span>` : '');
+  $('hist').prepend(el);
+  while ($('hist').children.length > 40) $('hist').lastChild.remove();
+}
+
+function escHtml(s){ return String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderStats(){
+  $('stCount').textContent = escCount;
+  $('stItems').textContent = escItems.size;
+  $('stQueue').textContent = escQueue.length;
+}
+
+// ---- Cámara ----
+async function startCamera(){
+  const video = $('video');
+  if (!('BarcodeDetector' in window)) {
+    $('cam').insertAdjacentHTML('afterend',
+      '<div class="warn">⚠️ Este navegador no soporta escaneo por cámara. ' +
+      'Usa <b>Chrome en Android</b>, o escribe/pega el código abajo — igual llega a la PC.</div>');
+    showFeedback('', '⌨️', 'Escribe el código', 'Tu navegador no escanea con la cámara');
+    $('manual').focus();
+    return;
+  }
+  try {
+    const formats = await BarcodeDetector.getSupportedFormats();
+    escDetector = new BarcodeDetector({
+      formats: formats.length ? formats
+        : ['ean_13','ean_8','upc_a','upc_e','code_128','code_39','codabar','itf']
+    });
+    escStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false
+    });
+    video.srcObject = escStream;
+    await video.play();
+    loop();
+  } catch (e) {
+    console.error(e);
+    showFeedback('err', '⚠️', 'Cámara no disponible', 'Revisa los permisos, o escribe el código abajo');
+    $('manual').focus();
+  }
+}
+
+function loop(){
+  const video = $('video');
+  escTimer = setInterval(async () => {
+    if (!escDetector || video.readyState < 2) return;
+    let codes = [];
+    try { codes = await escDetector.detect(video); } catch (e) { return; }
+    const now = Date.now();
+    for (const b of codes) {
+      const code = (b.rawValue || '').trim();
+      if (!code) continue;
+      if (escSeen[code] == null) sendCode(code);   // una vez por presentación
+      escSeen[code] = now;
+    }
+    for (const c of Object.keys(escSeen))
+      if (now - escSeen[c] > 700) delete escSeen[c]; // re-arma tras salir del cuadro
+  }, 250);
+}
+
+// La pantalla no se apaga a mitad del conteo
+async function keepAwake(){
+  try {
+    if ('wakeLock' in navigator) {
+      escWakeLock = await navigator.wakeLock.request('screen');
+      document.addEventListener('visibilitychange', async () => {
+        if (!document.hidden && escWakeLock?.released !== false) {
+          try { escWakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+        }
+      });
+    }
+  } catch (e) {}
+}
+
+// ---- Conteo directo (autónomo: no necesita una PC abierta) ----
+// Cada código llama a jjp_count_scan, que resuelve el producto, suma 1 y
+// deja rastro de quién contó. La respuesta trae el nombre y el acumulado.
+async function sendCode(code){
+  code = (code || '').trim();
+  if (!code) return;
+  beep();
+  if (navigator.vibrate) navigator.vibrate(50);
+
+  const { data, error } = await sb.rpc('jjp_count_scan', {
+    p_code: code, p_session: SESSION, p_by: escDevice || 'teléfono'
+  });
+
+  if (error){
+    escQueue.push(code); saveQueue(); renderStats();
+    setLink('off', 'Sin señal — ' + escQueue.length + ' en cola, se cuentan solos');
+    showFeedback('err', '📴', 'Guardado en cola', 'Se contará cuando vuelva la señal');
+    return;
+  }
+  escCount++;
+  applyResult(code, data);
+  renderStats();
+}
+
+// Pinta el resultado que devolvió la base
+function applyResult(code, r){
+  const cam = $('cam');
+  setLink('on', 'Contando');
+  if (r && r.ok){
+    escItems.add(r.variant_id || r.name || code);
+    showFeedback(r.dupe ? 'new' : 'ok', r.dupe ? '⚠️' : '✅',
+      r.name || 'Producto', r.dupe ? 'Contado · código compartido, revisar' : 'Contado', r.counted);
+    cam.className = 'cam hit';
+    if (navigator.vibrate) navigator.vibrate(40);
+    addHist(r.dupe ? '⚠️' : '✅', r.name || code, r.counted);
+  } else if (r && r.kind === 'nuevo'){
+    showFeedback('new', '❓', 'Código no registrado', code + ' — vincúlalo en la PC / Control');
+    cam.className = 'cam miss';
+    if (navigator.vibrate) navigator.vibrate([50, 60, 50]);
+    addHist('❓', code, null);
+  } else {
+    showFeedback('err', '⚠️', 'No se pudo contar', code);
+  }
+  setTimeout(() => { cam.className = 'cam'; }, 600);
+}
+
+// Reintenta la cola contra la base, en orden. Si vuelve a fallar, se detiene
+// y lo pendiente queda guardado para el próximo intento (no se pierde nada).
+async function flushQueue(){
+  if (!escQueue.length || !navigator.onLine) return;
+  const pend = escQueue.slice();
+  let ok = 0, last = null;
+  for (const code of pend){
+    const { data, error } = await sb.rpc('jjp_count_scan', {
+      p_code: code, p_session: SESSION, p_by: escDevice || 'teléfono'
+    });
+    if (error) break;
+    ok++; escCount++; last = { code, data };
+  }
+  if (ok){
+    escQueue = escQueue.slice(ok);
+    saveQueue(); renderStats();
+    if (last) applyResult(last.code, last.data);
+    if (typeof showToast === 'function') showToast(ok + ' escaneo(s) de la cola contados');
+  }
+}
+
+function saveQueue(){ localStorage.setItem('jjp_scan_queue', JSON.stringify(escQueue)); }
+
+function onManual(ev){
+  ev.preventDefault();
+  const inp = $('manual');
+  const code = (inp.value || '').trim();
+  if (!code) return;
+  inp.value = '';
+  delete escSeen[code];
+  sendCode(code);
+}
+
+// Pitido corto vía WebAudio (sin archivos)
+let _ac = null;
+function beep(){
+  try {
+    _ac = _ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = _ac.createOscillator(), g = _ac.createGain();
+    o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.05;
+    o.connect(g); g.connect(_ac.destination);
+    o.start(); o.stop(_ac.currentTime + 0.08);
+  } catch (e) {}
+}
+</script>
+</body>
+</html>

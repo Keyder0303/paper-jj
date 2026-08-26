@@ -1,0 +1,298 @@
+/* ======================================================
+   JJ Paper — Liquid Glass (iOS 26 style)
+   Material translúcido: blur del fondo, reflejo de luz,
+   brillo superior y reacción al toque/puntero.
+   Se carga al final: solo añade capa visual, no cambia layout.
+   ====================================================== */
+
+:root {
+  /* Tokens de vidrio — afinados estilo iOS 26: más blur, borde especular
+     fino y sombra difusa de bajo contraste */
+  --glass-blur:      34px;
+  --glass-sat:       230%;
+  --glass-bg:        rgba(255,255,255,.52);   /* vidrio claro */
+  --glass-bg-strong: rgba(255,255,255,.66);
+  --glass-brd:       rgba(255,255,255,.65);   /* borde luminoso */
+  --glass-brd-dk:    rgba(255,255,255,.16);   /* borde sobre verde */
+  --glass-hi:        rgba(255,255,255,.85);   /* highlight superior */
+  --glass-sh:        0 12px 40px rgba(22,96,74,.12),
+                     inset 0 1px 0 var(--glass-hi),
+                     inset 0 -1px 0 rgba(255,255,255,.20),
+                     0 0 0 .5px rgba(22,96,74,.05);
+  --glass-sh-dk:     0 10px 36px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.20);
+  /* Vidrio verde (nav / oscuros) */
+  --glass-green:     rgba(18,84,64,.66);
+  --glass-green-op:  rgba(18,84,64,.90);
+}
+
+/* Brillo/reflejo reutilizable: capa de luz en el borde superior */
+.glass-sheen { position:relative; isolation:isolate }
+.glass-sheen::before {
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(180deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 46%);
+  z-index:0;
+}
+
+/* ===================================================================
+   NAV — barra superior de vidrio verde
+   =================================================================== */
+#nav {
+  background:var(--glass-green);
+  -webkit-backdrop-filter:blur(36px) saturate(240%);
+          backdrop-filter:blur(36px) saturate(240%);
+  border-bottom:1px solid rgba(255,255,255,.30);
+  box-shadow:0 6px 36px rgba(0,0,0,.20),
+             inset 0 1px 0 rgba(255,255,255,.28);
+}
+/* reflejo de luz que recorre el borde superior del nav */
+#nav::after {
+  content:''; position:absolute; left:0; right:0; top:0; height:1.5px;
+  background:linear-gradient(90deg, transparent 5%, rgba(255,255,255,.85) 50%, transparent 95%);
+  pointer-events:none;
+}
+/* baño de luz vertical: el vidrio "atrapa" la luz en su mitad superior */
+#nav::before {
+  content:''; position:absolute; inset:0 0 45% 0; pointer-events:none;
+  background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0));
+}
+/* nav se vuelve más sólido tras hacer scroll (clase la pone nav.js si existe) */
+#nav.scrolled { background:var(--glass-green-op) }
+
+/* Menú móvil de vidrio */
+.m-menu {
+  background:var(--glass-green);
+  -webkit-backdrop-filter:blur(20px) saturate(160%);
+          backdrop-filter:blur(20px) saturate(160%);
+  border-top:1px solid var(--glass-brd-dk);
+}
+
+/* Píldora del carrito: vidrio interactivo */
+.n-cart {
+  background:rgba(22,96,74,.85);
+  -webkit-backdrop-filter:blur(14px) saturate(180%);
+          backdrop-filter:blur(14px) saturate(180%);
+  border:1px solid rgba(255,255,255,.50);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), 0 4px 16px rgba(0,0,0,.22);
+}
+.n-cart:active { transform:scale(.96) }
+
+/* ===================================================================
+   BOTONES — vidrio interactivo (reacción al puntero y al toque)
+   =================================================================== */
+.btn-p, .btn-o, .btn-o-wh, .btn-wa, .prod-modal-add, .pm-buy {
+  position:relative; overflow:hidden; isolation:isolate;
+}
+/* brillo superior intenso: media cúpula de luz sobre el vidrio */
+.btn-p::before, .btn-o::before, .btn-o-wh::before, .btn-wa::before,
+.prod-modal-add::before, .pm-buy::before {
+  content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.08) 48%, rgba(255,255,255,0) 60%);
+  opacity:.95; transition:opacity .3s ease; z-index:0;
+}
+.btn-p > *, .btn-o > *, .btn-o-wh > *, .btn-wa > *,
+.prod-modal-add > *, .pm-buy > * { position:relative; z-index:1 }
+
+/* Destello que barre el botón al pasar el puntero (specular sweep) */
+.btn-p::after, .btn-wa::after, .prod-modal-add::after, .pm-buy::after {
+  content:''; position:absolute; top:-20%; bottom:-20%; left:-70%; width:45%;
+  background:linear-gradient(105deg, transparent, rgba(255,255,255,.55) 50%, transparent);
+  transform:skewX(-18deg); pointer-events:none; z-index:0;
+  transition:left .55s cubic-bezier(.3,.7,.3,1);
+}
+.btn-p:hover::after, .btn-wa:hover::after, .prod-modal-add:hover::after,
+.pm-buy:hover::after { left:135% }
+
+.btn-p {
+  background:linear-gradient(180deg, rgba(42,158,110,.96), rgba(17,88,66,.96));
+  border:1px solid rgba(255,255,255,.48);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.60),
+             inset 0 -1px 0 rgba(0,0,0,.10),
+             0 10px 30px rgba(16,88,64,.32);
+}
+.btn-p:hover  { box-shadow:inset 0 1px 0 rgba(255,255,255,.60), 0 14px 38px rgba(16,88,64,.42) }
+.btn-p:active { transform:scale(.97) }
+
+.btn-o {
+  -webkit-backdrop-filter:blur(14px) saturate(180%);
+          backdrop-filter:blur(14px) saturate(180%);
+  background:rgba(16,107,58,.08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
+}
+.btn-o:hover  { background:var(--gd) }
+.btn-o:active { transform:scale(.97) }
+
+.btn-o-wh {
+  -webkit-backdrop-filter:blur(16px) saturate(180%);
+          backdrop-filter:blur(16px) saturate(180%);
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45);
+}
+.btn-o-wh:active { transform:scale(.97) }
+
+.btn-wa {
+  background:linear-gradient(180deg, rgba(41,190,101,.96), rgba(27,150,74,.96));
+  border:1px solid rgba(255,255,255,.45);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.60),
+             inset 0 -1px 0 rgba(0,0,0,.10),
+             0 10px 28px rgba(37,180,92,.34);
+}
+.btn-wa:hover  { box-shadow:inset 0 1px 0 rgba(255,255,255,.60), 0 14px 36px rgba(37,180,92,.44) }
+.btn-wa:active { transform:scale(.98) }
+
+/* Botón principal del modal de producto: mismo vidrio que .btn-p */
+.prod-modal-add {
+  background:linear-gradient(180deg, rgba(42,158,110,.96), rgba(17,88,66,.96)) !important;
+  border:1px solid rgba(255,255,255,.48);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.60),
+             inset 0 -1px 0 rgba(0,0,0,.10),
+             0 10px 30px rgba(16,88,64,.32);
+}
+
+/* ===================================================================
+   CARDS / VALORES — vidrio esmerilado
+   =================================================================== */
+.card, .val {
+  background:var(--glass-bg-strong);
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+          backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border:1px solid var(--glass-brd);
+  box-shadow:var(--glass-sh);
+}
+.card:hover { transform:translateY(-3px); box-shadow:0 16px 44px rgba(16,107,58,.15), inset 0 1px 0 var(--glass-hi) }
+
+.val-ico {
+  background:rgba(255,255,255,.4);
+  -webkit-backdrop-filter:blur(6px);
+          backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.5);
+}
+
+/* ===================================================================
+   MODAL — panel de vidrio
+   =================================================================== */
+.modal-overlay {
+  background:rgba(16,40,28,.35);
+  -webkit-backdrop-filter:blur(10px) saturate(140%);
+          backdrop-filter:blur(10px) saturate(140%);
+}
+.modal-box {
+  background:var(--glass-bg-strong);
+  -webkit-backdrop-filter:blur(34px) saturate(210%);
+          backdrop-filter:blur(34px) saturate(210%);
+  border:1px solid var(--glass-brd);
+  box-shadow:0 24px 70px rgba(0,0,0,.30), inset 0 1px 0 var(--glass-hi);
+}
+.modal-hd {
+  background:rgba(255,255,255,.55);
+  -webkit-backdrop-filter:blur(14px);
+          backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.4);
+}
+.modal-close {
+  background:rgba(255,255,255,.45);
+  border:1px solid rgba(255,255,255,.5);
+  -webkit-backdrop-filter:blur(6px);
+          backdrop-filter:blur(6px);
+}
+
+/* ===================================================================
+   TOAST — notificación de vidrio
+   =================================================================== */
+.toast {
+  background:rgba(255,255,255,.72);
+  -webkit-backdrop-filter:blur(16px) saturate(180%);
+          backdrop-filter:blur(16px) saturate(180%);
+  border:1px solid var(--glass-brd);
+  box-shadow:0 10px 34px rgba(0,0,0,.18), inset 0 1px 0 var(--glass-hi);
+  border-left:4px solid var(--gm);
+}
+
+/* ===================================================================
+   BADGES / TAGS — vidrio ligero
+   =================================================================== */
+.s-tag, .status-badge {
+  -webkit-backdrop-filter:blur(6px) saturate(150%);
+          backdrop-filter:blur(6px) saturate(150%);
+  border:1px solid rgba(255,255,255,.4);
+}
+
+/* ===================================================================
+   BARRA DE VENTAJAS / FEATURES — vidrio claro
+   =================================================================== */
+.f-bar {
+  background:rgba(255,255,255,.6);
+  -webkit-backdrop-filter:blur(16px) saturate(170%);
+          backdrop-filter:blur(16px) saturate(170%);
+  border-bottom:1px solid rgba(255,255,255,.5);
+}
+.brands-strip {
+  background:rgba(255,255,255,.5);
+  -webkit-backdrop-filter:blur(12px);
+          backdrop-filter:blur(12px);
+}
+
+/* ===================================================================
+   BACK-TO-TOP — burbuja de vidrio interactiva
+   =================================================================== */
+.btt {
+  background:rgba(22,96,74,.85);
+  -webkit-backdrop-filter:blur(10px) saturate(160%);
+          backdrop-filter:blur(10px) saturate(160%);
+  border:1px solid rgba(255,255,255,.35);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 6px 20px rgba(0,0,0,.2);
+}
+.btt:active { transform:scale(.94) }
+
+/* ===================================================================
+   INPUTS — foco de vidrio suave
+   =================================================================== */
+.fi:focus, .fta:focus {
+  background:rgba(255,255,255,.85);
+  -webkit-backdrop-filter:blur(4px);
+          backdrop-filter:blur(4px);
+}
+
+/* ===================================================================
+   FALLBACKS — navegadores sin backdrop-filter o con
+   preferencia de menor transparencia: fondos sólidos legibles.
+   =================================================================== */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  #nav, .m-menu   { background:var(--gd) }
+  .card, .val, .modal-box, .modal-hd, .toast, .f-bar, .brands-strip { background:#fff }
+  .modal-overlay  { background:rgba(0,0,0,.55) }
+}
+@media (prefers-reduced-transparency:reduce) {
+  #nav, .m-menu   { background:var(--gd) }
+  .card, .val, .modal-box, .modal-hd, .toast, .f-bar { background:#fff }
+  .modal-overlay  { background:rgba(0,0,0,.55) }
+}
+@media (prefers-reduced-motion:reduce) {
+  .btn-p::after, .btn-wa::after, .prod-modal-add::after,
+  .pm-buy::after { display:none }
+}
+
+/* ===================================================================
+   MOBILE — el blur apilado es caro en GPUs móviles: nav y modal
+   quedan con blur moderado; el resto pasa a fondo semi-opaco sólido
+   (mismo look, sin costo de composición).
+   =================================================================== */
+@media (max-width:768px) {
+  #nav, .m-menu {
+    -webkit-backdrop-filter:blur(16px) saturate(200%);
+            backdrop-filter:blur(16px) saturate(200%);
+  }
+  .modal-box {
+    -webkit-backdrop-filter:blur(16px) saturate(200%);
+            backdrop-filter:blur(16px) saturate(200%);
+  }
+  .card, .val, .toast, .f-bar, .brands-strip, .modal-hd,
+  .val-ico, .modal-close, .s-tag, .status-badge,
+  .n-cart, .btn-o, .btn-o-wh, .btt, .modal-overlay,
+  .fi:focus, .fta:focus {
+    -webkit-backdrop-filter:none;
+            backdrop-filter:none;
+  }
+  .card, .val, .modal-hd, .toast, .f-bar, .brands-strip { background:rgba(255,255,255,.94) }
+  .modal-overlay { background:rgba(16,40,28,.55) }
+}

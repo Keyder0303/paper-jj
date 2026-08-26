@@ -3,32 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Paper Puente — Hub de Comunicación Interna y CRM</title>
-  <link rel="stylesheet" href="assets/css/main.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <title>Paper Puente — Hub de Comunicaciones y CRM</title>
+  <link rel="stylesheet" href="assets/css/variables.css">
+  <link rel="stylesheet" href="assets/css/admin.css">
+  <link rel="stylesheet" href="assets/css/wa.css">
+  <script src="assets/vendor/supabase-2.58.0.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/toast.js"></script>
 </head>
-<body>
-
-  <header>
-    <h1>Paper Puente <span>Hub Operativo</span></h1>
-    <div id="connection-status" class="badge badge-success">Conectado a Supabase</div>
-  </header>
-
-  <div class="app-container">
-    <sidebar>
-      <a class="nav-item active" onclick="switchTab('dashboard')">📊 Dashboard General</a>
-      <a class="nav-item" onclick="switchTab('chat')">💬 Centro WhatsApp & Chat</a>
-      <a class="nav-item" onclick="switchTab('campaigns')">📢 Campañas y Difusión</a>
-      <a class="nav-item" onclick="switchTab('catalog')">📦 Catálogo e Inventario</a>
-      <a class="nav-item" onclick="switchTab('customers')">👥 Clientes y Zonas</a>
-      <a class="nav-item" onclick="switchTab('orders')">🛒 Pedidos y Cotizaciones</a>
-    </sidebar>
-
-    <main id="main-content">
-      <!-- Se inyecta dinámicamente -->
-    </main>
+<body style="background: #0b0f19; color: #fff; font-family: sans-serif; padding: 40px;">
+  <div style="max-width: 900px; margin: 0 auto; background: #111827; padding: 30px; border-radius: 12px; border: 1px solid #374151; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+    <h1 style="font-size: 1.8rem; margin-bottom: 10px; color: #fff;">Paper Puente <span style="color: #38bdf8; font-size: 1rem;">— Centro de Comunicaciones y CRM</span></h1>
+    <p style="color: #9ca3af; margin-bottom: 25px;">Sistema operativo para gestión directa de WhatsApp, correo masivo, clientes, catálogo y pedidos.</p>
+    
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+      <a href="admin/whatsapp.html" style="background: #1f2937; padding: 20px; border-radius: 8px; color: #38bdf8; text-decoration: none; border: 1px solid #374151; font-weight: bold; display: block; transition: 0.2s;">💬 CRM WhatsApp & Baileys</a>
+      <a href="admin/correo.html" style="background: #1f2937; padding: 20px; border-radius: 8px; color: #38bdf8; text-decoration: none; border: 1px solid #374151; font-weight: bold; display: block; transition: 0.2s;">📧 CRM Correo (Gmail)</a>
+      <a href="admin/difusion.html" style="background: #1f2937; padding: 20px; border-radius: 8px; color: #38bdf8; text-decoration: none; border: 1px solid #374151; font-weight: bold; display: block; transition: 0.2s;">📢 Campañas y Difusión Masiva</a>
+      <a href="admin/clientes.html" style="background: #1f2937; padding: 20px; border-radius: 8px; color: #38bdf8; text-decoration: none; border: 1px solid #374151; font-weight: bold; display: block; transition: 0.2s;">👥 Gestión de Clientes y Zonas</a>
+      <a href="admin/productos.html" style="background: #1f2937; padding: 20px; border-radius: 8px; color: #38bdf8; text-decoration: none; border: 1px solid #374151; font-weight: bold; display: block; transition: 0.2s;">📦 Catálogo e Inventario</a>
+      <a href="admin/pedidos.html" style="background: #1f2937; padding: 20px; border-radius: 8px; color: #38bdf8; text-decoration: none; border: 1px solid #374151; font-weight: bold; display: block; transition: 0.2s;">🛒 Control de Pedidos</a>
+    </div>
   </div>
-
-  <script src="assets/js/app.js"></script>
 </body>
 </html>

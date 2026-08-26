@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario | JJ Paper Admin</title>
+<link rel="stylesheet" href="../assets/css/variables.css">
+<link rel="stylesheet" href="../assets/css/components.css">
+<link rel="stylesheet" href="../assets/css/catalog.css">
+<link rel="stylesheet" href="../assets/css/admin.css">
+<link rel="stylesheet" href="../assets/css/responsive.css">
+<style>
+.inv-stock-ctrl { display:flex; align-items:center; gap:4px }
+.inv-stock-ctrl .qb { width:26px; height:26px; font-size:14px }
+.inv-stock-in { width:64px; height:30px; font-size:13px; text-align:center; padding:0 4px }
+.inv-filters { display:flex; gap:10px; align-items:center; flex-wrap:wrap }
+
+/* ---- Modo conteo (escáner) ---- */
+.scan-overlay { position:fixed; inset:0; z-index:9999; background:rgba(0,20,15,.96);
+  display:none; flex-direction:column; padding:14px; overflow-y:auto; }
+.scan-overlay.op { display:flex; }
+.scan-head { display:flex; align-items:center; justify-content:space-between; color:#fff; margin-bottom:10px; }
+.scan-head h3 { margin:0; font-size:18px; }
+.scan-cam { position:relative; width:100%; max-width:520px; margin:0 auto; aspect-ratio:4/3;
+  background:#000; border-radius:14px; overflow:hidden; }
+.scan-cam video { width:100%; height:100%; object-fit:cover; }
+.scan-reticle { position:absolute; inset:18% 12%; border:3px solid #99CC33;
+  border-radius:12px; box-shadow:0 0 0 4000px rgba(0,0,0,.25); pointer-events:none; }
+.scan-status { text-align:center; color:#dfe; font-size:14px; margin:10px auto; min-height:20px; max-width:520px; }
+.scan-panel { width:100%; max-width:520px; margin:0 auto; background:#fff; border-radius:14px; padding:14px; }
+.scan-item { display:flex; gap:12px; align-items:center; }
+.scan-item-thumb { width:56px; height:56px; border-radius:10px; background:#f2f2f2;
+  display:flex; align-items:center; justify-content:center; font-size:28px; overflow:hidden; flex:none; }
+.scan-item-thumb img { width:100%; height:100%; object-fit:cover; }
+.scan-item-name { font-weight:700; }
+.scan-item-sub { font-size:12px; color:var(--gr); }
+.scan-count-row { display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.scan-count-in { width:80px; height:36px; text-align:center; font-size:16px; }
+.scan-hint { font-size:13px; color:var(--gr); margin:6px 0; }
+.scan-manual { display:flex; gap:8px; max-width:520px; margin:12px auto 0; width:100%; }
+.scan-manual .fi { flex:1; }
+.scan-link { width:100%; max-width:520px; margin:12px auto 0; background:#fff8e6;
+  border:1px solid #e8c96b; border-radius:14px; padding:14px; display:none; }
+.scan-link.op { display:block; }
+.scan-link-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.scan-link-results { display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; margin-top:8px; }
+.scan-hit { text-align:left; background:#f7f7f7; border:1px solid #eee; border-radius:10px;
+  padding:8px 10px; cursor:pointer; display:flex; flex-direction:column; }
+.scan-hit:hover { background:#eef7e0; }
+.scan-hit-name { font-weight:600; font-size:14px; }
+.scan-hit-sub { font-size:12px; color:var(--gr); }
+.scan-bridge { font-size:12px; font-weight:600; padding:5px 10px; border-radius:999px; margin-left:auto; margin-right:10px; }
+.scan-bridge.on  { background:rgba(153,204,51,.18); color:#b6e05a; }
+.scan-bridge.off { background:rgba(255,255,255,.10); color:#9fc7b3; }
+.scan-prog { margin-bottom:12px; }
+.scan-who-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.scan-who-row b { color:#16604A; }
+.scan-prog-bar { height:8px; border-radius:999px; background:#e8eee9; overflow:hidden; }
+.scan-prog-bar span { display:block; height:100%; background:linear-gradient(90deg,#16604A,#99CC33); transition:width .3s; }
+.scan-prog-txt { font-size:12px; color:var(--gr); margin-top:5px; }
+.scan-unknown-row { display:flex; align-items:center; gap:8px; background:#fff; border:1px solid #f0e2bd;
+  border-radius:10px; padding:8px 10px; }
+.scan-unknown-row code { flex:1; font-size:13px; word-break:break-all; }
+/* Totales globales del conteo */
+.scan-tot-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
+.scan-tot { background:#f3f7f4; border:1px solid #e0eae3; border-radius:10px; padding:8px 6px; text-align:center; }
+.scan-tot b { display:block; font-size:20px; color:#16604A; line-height:1.1; }
+.scan-tot span { font-size:11px; color:var(--gr); }
+.scan-tot-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; justify-content:center; }
+/* Alta manual de productos */
+.scan-new-form { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.scan-new-form label { display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--gr); }
+.scan-new-form label:first-child, .scan-new-form button { grid-column:1 / -1; }
+.scan-new-form .fi { padding:10px 12px; font-size:16px; min-height:44px; }
+@media (max-width:520px) { .scan-new-form { grid-template-columns:1fr; } }
+/* Buscador universal: contar sin escanear */
+.scan-manual .fi { font-size:16px; min-height:48px; padding:10px 14px; }
+.scan-manual .btn-p { min-height:48px; padding:0 18px; font-size:15px; }
+.scan-search-results { width:100%; max-width:520px; margin:8px auto 0; background:#fff;
+  border-radius:14px; padding:8px; display:none; max-height:300px; overflow-y:auto; }
+.scan-search-results.op { display:block; }
+.scan-search-results .scan-hit { width:100%; margin-bottom:6px; }
+/* Objetivos táctiles grandes: se cuenta con una mano y el teléfono en la otra */
+.scan-hit { min-height:56px; padding:10px 14px; position:relative; }
+.scan-hit-name { font-size:15px; }
+.scan-hit-n { position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  background:#16604A; color:#fff; font-size:12px; font-weight:700;
+  padding:6px 12px; border-radius:999px; white-space:nowrap; }
+.scan-wide { width:100%; min-height:48px; margin-top:8px; font-size:15px; }
+.scan-big-in { min-height:48px; font-size:16px; }
+.scan-unknown-card { background:#fff; border:1px solid #f0e2bd; border-radius:12px; padding:12px; }
+.scan-unknown-card code { display:block; font-size:15px; font-weight:700; word-break:break-all; margin-bottom:4px; }
+.scan-unknown-alt { display:flex; gap:8px; margin-top:8px; }
+.scan-unknown-alt .btn-ghost { flex:1; min-height:42px; }
+.scan-count-row .qb { min-width:44px; min-height:44px; font-size:20px; }
+.scan-count-in { width:90px; height:44px; font-size:18px; }
+.scan-tot-actions .btn-ghost { min-height:42px; }
+</style>
+<link rel="stylesheet" href="../assets/css/perf.css">
+<script src="../assets/js/perf.js"></script>
+</head>
+<body class="admin-body">
+
+<div class="admin-wrap">
+  <aside class="admin-aside" id="adminAside">
+    <div class="aside-brand">
+      <img class="n-logo-img" src="../assets/img/logo.svg" alt="JJ Paper" width="38" height="38">
+      <span>JJ <em>Paper</em></span>
+    </div>
+    <nav class="aside-nav">
+      <span class="a-section">Principal</span>
+      <a href="index.html"><span class="a-ico">📊</span> Dashboard</a>
+      <a href="pedidos.html"><span class="a-ico">🛒</span> Pedidos</a>
+      <a href="productos.html"><span class="a-ico">📦</span> Productos</a>
+      <a href="inventario.html" class="on"><span class="a-ico">🗃️</span> Inventario</a>
+      <a href="conteo.html"><span class="a-ico">🔧</span> Control del conteo</a>
+      <a href="facturas.html"><span class="a-ico">🧾</span> Cuentas por Pagar</a>
+      <a href="cotizaciones.html"><span class="a-ico">📋</span> Cotizaciones</a>
+      <a href="whatsapp.html"><span class="a-ico">💬</span> WhatsApp</a>
+      <a href="promociones.html"><span class="a-ico">🔥</span> Promociones</a>
+      <a href="resenas.html"><span class="a-ico">⭐</span> Resenas</a>
+      <div class="divider"></div>
+      <span class="a-section">Catalogo</span>
+      <a href="marcas.html"><span class="a-ico">🏷️</span> Marcas</a>
+      <a href="unidades.html"><span class="a-ico">📐</span> Unidades</a>
+      <div class="divider"></div>
+      <span class="a-section">Sistema</span>
+      <a href="vendedores.html"><span class="a-ico">👥</span> Vendedores</a>
+      <a href="ajustes.html"><span class="a-ico">⚙️</span> Ajustes</a>
+      <a href="../index.html" target="_blank"><span class="a-ico">🌐</span> Ver Sitio</a>
+      <a href="#" onclick="adminLogout()"><span class="a-ico">🚪</span> Cerrar Sesion</a>
+    </nav>
+    <div class="aside-ft">Sesion: <strong id="adminUserEmail" style="color:#fff">—</strong></div>
+  </aside>
+
+  <main class="admin-main">
+    <div class="admin-topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" id="menuToggleBtn">☰</button>
+        <div class="topbar-title">
+          <h2>Inventario</h2>
+          <p>Stock por producto · marca · presentación</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn-ghost" onclick="window.open('../lista_costos.html','_blank')" title="Imprimir Lista de Precios en USD por Categoría">🖨️ Lista de Precios</button>
+        <button class="btn-ghost" onclick="location.href='facturas.html'" title="Facturas de proveedores a crédito y sus vencimientos">🧾 Cuentas por Pagar</button>
+        <button class="btn-ghost" onclick="invExportCSV()" title="Exporta lo filtrado; edítalo y re-impórtalo en Productos">⬇️ Exportar CSV</button>
+        <button class="btn-ghost" onclick="location.href='productos.html'">📥 Importar / Productos</button>
+        <button class="btn-ghost" onclick="location.href='conteo.html'" title="Corregir cantidades y códigos cruzados · valor de lo contado">🔧 Control del conteo</button>
+        <button class="btn-p" onclick="invScanOpen()">📷 Modo conteo</button>
+        <button class="btn-ghost" onclick="invScanPhoneLink()" title="Abre esta dirección en tu teléfono para escanear con su cámara">📲 Teléfono</button>
+        <button class="btn-ghost" onclick="invOfflineHelp()" title="Contar sin internet, por WiFi local (servidor de la PC)">📴 Sin internet</button>
+        <button class="btn-ghost" onclick="loadInventory()">🔄 Refrescar</button>
+      </div>
+    </div>
+
+    <div class="admin-content">
+
+      <!-- Resumen -->
+      <div class="stat-grid" style="margin-bottom:18px">
+        <div class="stat-card"><div class="stat-ico green">🗃️</div>
+          <div><div class="stat-n" id="inv-tot">—</div><div class="stat-l">Variantes totales</div></div></div>
+        <div class="stat-card"><div class="stat-ico blue">📋</div>
+          <div><div class="stat-n" id="inv-ctrl">—</div><div class="stat-l">Con control de stock</div></div></div>
+        <div class="stat-card"><div class="stat-ico yellow">⚠️</div>
+          <div><div class="stat-n" id="inv-low">—</div><div class="stat-l">Stock bajo (≤5)</div></div></div>
+        <div class="stat-card"><div class="stat-ico red">🚫</div>
+          <div><div class="stat-n" id="inv-out">—</div><div class="stat-l">Agotadas</div></div></div>
+      </div>
+
+      <!-- Cola de fotos faltantes -->
+      <div class="admin-table-wrap" style="margin-bottom:18px">
+        <div class="table-top">
+          <h3>📷 Faltan fotos</h3>
+          <div class="inv-filters">
+            <span id="mpCount" style="font-size:12px;color:var(--gr)"></span>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+              <input type="checkbox" checked onchange="mpOnSolo(this.checked)">
+              Solo lo ya contado
+            </label>
+            <select class="sort-sel" id="mpCatSel" style="height:34px" onchange="mpOnCat(this.value)"></select>
+            <div class="srch" style="min-width:200px">
+              <span class="srch-ico">🔍</span>
+              <input type="text" placeholder="Producto o SKU..." oninput="mpOnSearch(this.value)">
+            </div>
+            <button class="btn-ghost" style="height:34px" onclick="mpExportCSV()">⬇️ CSV</button>
+          </div>
+        </div>
+        <div class="stat-grid" style="margin:0 0 12px">
+          <div class="stat-card"><div class="stat-ico red">📷</div>
+            <div><div class="stat-n" id="mp-sinfoto">—</div><div class="stat-l">Sin foto</div></div></div>
+          <div class="stat-card"><div class="stat-ico yellow">📦</div>
+            <div><div class="stat-n" id="mp-contados">—</div><div class="stat-l">Ya contados sin foto</div></div></div>
+          <div class="stat-card"><div class="stat-ico green">💵</div>
+            <div><div class="stat-n" id="mp-usd">—</div><div class="stat-l">Inmovilizado sin foto</div></div></div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th style="width:120px">SKU</th>
+                <th>Categoría</th>
+                <th style="width:80px;text-align:right">Stock</th>
+                <th style="width:110px;text-align:right">USD parado</th>
+                <th style="width:110px;text-align:center">Foto</th>
+              </tr>
+            </thead>
+            <tbody id="mpTableBody">
+              <tr><td colspan="6" class="table-empty">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="admin-table-wrap">
+        <div class="table-top">
+          <h3>🗃️ Stock por variante</h3>
+          <div class="inv-filters">
+            <span id="invCount" style="font-size:12px;color:var(--gr)"></span>
+            <select class="sort-sel" style="height:34px" onchange="invOnState(this.value)">
+              <option value="">Todos los estados</option>
+              <option value="bajo">⚠️ Stock bajo (1–5)</option>
+              <option value="agotado">🚫 Agotadas</option>
+              <option value="concontrol">📋 Con control</option>
+              <option value="sincontrol">∞ Sin control</option>
+            </select>
+            <select class="sort-sel" id="invBrandSel" style="height:34px" onchange="invOnBrand(this.value)"></select>
+            <div class="srch" style="min-width:200px">
+              <span class="srch-ico">🔍</span>
+              <input type="text" placeholder="Producto, marca, SKU..." oninput="invOnSearch(this.value)">
+            </div>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width:56px">Img</th>
+                <th>Producto</th>
+                <th>Marca / Presentación</th>
+                <th>SKU</th>
+                <th>Precio</th>
+                <th style="text-align:center">Estado</th>
+                <th>Stock</th>
+                <th style="width:60px"></th>
+              </tr>
+            </thead>
+            <tbody id="invTableBody">
+              <tr><td colspan="8" class="table-empty">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span></span>
+          <div class="pag" id="invPag"></div>
+        </div>
+      </div>
+
+      <!-- Kardex: historial de movimientos de stock -->
+      <div class="admin-table-wrap" style="margin-top:18px">
+        <div class="table-top">
+          <h3>📜 Movimientos de stock (kardex)</h3>
+          <div class="inv-filters">
+            <span id="movCount" style="font-size:12px;color:var(--gr)"></span>
+            <select class="sort-sel" style="height:34px" onchange="movOnReason(this.value)">
+              <option value="">Todas las razones</option>
+              <option value="venta">🛒 Ventas (pedidos)</option>
+              <option value="reverso">↩️ Reversos</option>
+              <option value="conteo">📷 Conteos físicos</option>
+              <option value="ajuste">✏️ Ajustes manuales</option>
+            </select>
+            <div class="srch" style="min-width:200px">
+              <span class="srch-ico">🔍</span>
+              <input type="text" placeholder="Producto, marca, SKU, pedido..." oninput="movOnSearch(this.value)">
+            </div>
+            <button class="btn-ghost sm" onclick="loadMoves()">🔄</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Producto</th>
+                <th>Marca / Presentación</th>
+                <th style="text-align:center">Cambio</th>
+                <th style="text-align:center">Antes → Después</th>
+                <th>Razón</th>
+                <th>Referencia</th>
+              </tr>
+            </thead>
+            <tbody id="movTableBody">
+              <tr><td colspan="7" class="table-empty">Cargando movimientos...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Overlay Modo conteo (escáner de cámara) -->
+<div class="scan-overlay" id="scanOverlay">
+  <div class="scan-head">
+    <h3>📷 Modo conteo</h3>
+    <span class="scan-bridge off" id="scanBridgeState">📲 Puente desconectado</span>
+    <button class="btn-ghost" onclick="scanNewOpen('')" title="Agregar un producto que no está en la lista de precios">➕ Producto nuevo</button>
+    <button class="btn-p" onclick="invScanFinish()">✓ Terminar</button>
+  </div>
+  <div class="scan-cam">
+    <video id="scanVideo" playsinline muted></video>
+    <div class="scan-reticle"></div>
+  </div>
+  <div class="scan-status" id="scanStatus">Iniciando…</div>
+
+  <div class="scan-panel">
+    <div class="scan-prog" id="scanProgress"></div>
+    <div id="scanActive"><p class="scan-hint">Ningún producto en conteo todavía.</p></div>
+  </div>
+
+  <form class="scan-manual" onsubmit="scanManualSubmit(event)">
+    <input type="text" class="fi" id="scanManualInput" autocomplete="off"
+      oninput="scanOmni(this.value)"
+      placeholder="🔍 Busca por nombre, marca o SKU — o escribe el código">
+    <button class="btn-p" type="submit">Buscar</button>
+  </form>
+  <div class="scan-search-results" id="scanSearchResults"></div>
+
+  <div class="scan-link" id="scanLink"></div>
+</div>
+
+<div class="toast-c" id="toastC"></div>
+
+<script src="../assets/vendor/supabase-2.58.0.js"></script>
+<script src="../assets/js/config.js"></script>
+<script src="../assets/js/toast.js"></script>
+<script src="../assets/js/admin/auth.js"></script>
+<script src="../assets/js/admin/sidenav.js?v=20260819b"></script>
+<script src="../assets/js/admin/inventory.js"></script>
+<script src="../assets/js/admin/inv-scan.js"></script>
+<script src="../assets/js/admin/missing-photos.js"></script>
+<script>
+// Conteo sin internet: el wa-server de la PC sirve la app por WiFi local.
+function invOfflineHelp() {
+  const url = 'http://localhost:8787/lan/start';
+  alert('CONTEO SIN INTERNET (WiFi local)\n\n'
+    + '1) En esta PC debe estar corriendo el servidor (wa-server).\n'
+    + '2) Se abrirá una página con un CÓDIGO QR.\n'
+    + '3) Cada teléfono, en la MISMA red WiFi, escanea ese QR (o escribe la dirección) y cuenta.\n'
+    + '4) Se ve todo en vivo; al volver internet, se sube solo a la nube.\n\n'
+    + 'Abriendo la página del QR en esta PC…');
+  window.open(url, '_blank');
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const session = await requireAuth();
+  if (!session) return;
+  renderUserBar(session);
+  document.getElementById('menuToggleBtn')?.addEventListener('click', () =>
+    document.getElementById('adminAside')?.classList.toggle('op')
+  );
+  await loadInventory();
+  mpLoad();            // cola de fotos faltantes
+  loadMoves();         // kardex (no bloquea la tabla principal)
+  scanStartBridge();   // recibe escaneos del teléfono (admin/escaner.html) en vivo
+});
+</script>
+</body>
+</html>
